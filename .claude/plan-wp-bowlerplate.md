@@ -55,7 +55,7 @@ wp-boilerplate/
 │   │   │   └── single-password.twig # ✅
 │   │   └── partials/            # ✅ (tous les partials Timber)
 │   └── theme/                   # Fichiers PHP du thème
-│       ├── functions.php        # ✅ (modifié : charge autoload-path.php + inc/)
+│       ├── functions.php        # ✅ (modifié : charge autoload-path.php + require StarterSite.php + inc/)
 │       ├── index.php            # ✅
 │       ├── style.css            # ✅
 │       ├── screenshot.png       # ✅
@@ -143,8 +143,18 @@ wp-boilerplate/
 > d'environnement ou un check HTTP. En pratique, on utilise un fichier `dist/hot` créé par
 > `sync.js` qui contient l'URL du dev server. Plus fiable, pas de requête HTTP à chaque page load.
 
-- **En dev :** détecte `dist/hot`, enqueue le client HMR + entry point via `<script type="module">`
-- **En prod :** lit `dist/.vite/manifest.json` et enqueue les fichiers hashés
+> **CHANGEMENT Phase 3 :** Le plan prévoyait `wp_enqueue_script_tag_attributes()` pour ajouter
+> `type="module"` aux scripts. Cette fonction n'existe pas dans WordPress. Remplacé par le filtre
+> `script_loader_tag` qui modifie le tag HTML directement. L'injection du client HMR (`@vite/client`)
+> a aussi été déplacée dans un `add_action('wp_head', ..., 1)` séparé au lieu d'être dans le callback
+> `wp_enqueue_scripts` (qui s'exécute trop tard pour injecter dans `wp_head`).
+
+> **CHANGEMENT Phase 3 :** Le `base` de Vite est maintenant conditionnel : `/` en dev (pour que
+> `@vite/client` et les entry points soient accessibles à des URLs simples) et
+> `/wp-content/themes/{theme}/dist/` en prod (pour les URLs correctes dans le manifest).
+
+- **En dev :** détecte `dist/hot`, injecte le client HMR tôt dans `<head>`, enqueue l'entry point avec `type="module"` via filtre `script_loader_tag`
+- **En prod :** lit `dist/.vite/manifest.json` et enqueue les fichiers hashés (CSS + JS)
 
 ---
 
@@ -200,7 +210,13 @@ Le build system copie dans ce dossier, DevKinsta sert le site. Aucune modificati
 - MySQL 8.0 avec healthcheck
 - phpMyAdmin sur `localhost:8081`
 - Volume : `../public` monté comme document root
+- Volume : `../vendor` monté sur `/var/www/vendor` (ajouté Phase 3, voir ci-dessous)
 - Variables d'env depuis `.env` avec valeurs par défaut
+
+> **CHANGEMENT Phase 3 :** Ajout du volume `../vendor:/var/www/vendor` pour que le container
+> WordPress puisse accéder à l'autoload Composer. Le `sync.js` génère `autoload-path.php` avec
+> le chemin `/var/www/vendor/autoload.php` quand `VENDOR_PATH` est défini dans `.env`.
+> Sans ce volume, le chemin local macOS (`/Users/...`) n'existait pas dans le container → fatal error.
 
 ---
 
@@ -256,7 +272,15 @@ npm-debug.log*
 - [x] `bin/sync.js` — copie src/ → THEME_DIR, génère autoload-path.php, crée symlink acf-json, fichier hot
 - [x] Watch mode via `sync.js --watch` + `vite-plugin-live-reload` (pas de plugin Vite custom, plus simple)
 - [x] Build prod testé : CSS/JS compilés avec hashes, manifest.json généré
-- [ ] **À TESTER** : HMR CSS + live reload PHP/Twig dans le navigateur (thème pas encore activé dans WP)
+- [x] HMR CSS testé ✅ — modification SCSS → injection CSS sans reload
+- [x] Live reload Twig testé ✅ — modification .twig → full reload navigateur
+
+**Bugs corrigés en Phase 3 :**
+- [x] `autoload-path.php` pointait vers chemin macOS local, inaccessible dans Docker → ajout volume `vendor/` + variable `VENDOR_PATH`
+- [x] `functions.php` : `StarterSite` pas trouvée (autoload PSR-4 Composer = chemins locaux) → ajout `require_once` explicite
+- [x] `vite.php` : `wp_enqueue_script_tag_attributes()` n'existe pas dans WP → remplacé par filtre `script_loader_tag`
+- [x] `vite.php` : client HMR `@vite/client` pas injecté (add_action wp_head dans wp_enqueue_scripts = trop tard) → déplacé dans hook wp_head séparé
+- [x] `vite.config.js` : `base` fixe en dev causait 404 sur `@vite/client` → base conditionnel (`/` en dev, chemin complet en prod)
 
 ### Phase 4 : CLI Setup ⏳ À FAIRE
 
@@ -282,7 +306,7 @@ npm-debug.log*
 1. ✅ **Docker :** containers lancés, WordPress installé et accessible sur `localhost:8080`
 2. ✅ **Sync :** `node bin/sync.js` copie tous les fichiers correctement dans `public/wp-content/themes/starter-theme/`
 3. ✅ **Build prod :** `vite build` produit les assets hashés + `manifest.json`
-4. ⏳ **HMR :** activer le thème dans WP → `npm run dev` → tester le HMR SCSS et live reload Twig
+4. ✅ **HMR :** thème activé dans WP → `npm run dev` → HMR SCSS (injection sans reload) + live reload Twig (full reload) fonctionnels
 5. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
 6. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
 
@@ -290,7 +314,8 @@ npm-debug.log*
 
 ## Points d'attention
 
-- **Autoload Composer :** ✅ Résolu via `autoload-path.php` généré par `sync.js` qui contient le chemin absolu vers `vendor/autoload.php` du repo. En prod, `vendor/` est copié dans le thème.
+- **Autoload Composer :** ✅ Résolu via `autoload-path.php` généré par `sync.js`. En dev Docker, pointe vers `/var/www/vendor/autoload.php` (via `VENDOR_PATH` dans `.env`). En dev local/DevKinsta, pointe vers le chemin absolu du repo. En prod, `vendor/` est copié dans le thème.
+- **StarterSite autoload :** ✅ L'autoload PSR-4 de Composer contient des chemins absolus locaux qui ne fonctionnent pas dans Docker. Résolu par un `require_once` explicite dans `functions.php` plutôt que de dépendre de l'autoloader pour les classes du thème.
 - **HTTPS DevKinsta :** Si DevKinsta sert en HTTPS, Vite doit aussi être en HTTPS (configurable dans `vite.config.js`).
 - **Déploiement :** `npm run build` produit un thème autonome. Pour la prod, `vendor/` (Timber) est inclus automatiquement par `sync.js --production`.
 
@@ -303,3 +328,7 @@ npm-debug.log*
 3. **Détection dev server** : fichier `dist/hot` au lieu d'un check HTTP ou variable d'env — plus fiable
 4. **Manifest path** : Vite 6 génère le manifest dans `dist/.vite/manifest.json` (pas `dist/manifest.json`), `vite.php` adapté en conséquence
 5. **CLI setup** : ajout prévu de questions fonctionnelles ("utilises-tu ACF ?", etc.) pour retirer/ajouter des fichiers du boilerplate
+6. **Docker vendor volume** : ajout de `../vendor:/var/www/vendor` dans docker-compose + `VENDOR_PATH` dans `.env` pour résoudre l'autoload cross-environnement
+7. **Vite base conditionnel** : `base: '/'` en dev, `base: '/wp-content/themes/{theme}/dist/'` en prod — le plan initial avait un base fixe qui cassait `@vite/client` en dev
+8. **StarterSite require** : `require_once` explicite au lieu de dépendre de l'autoload PSR-4 Composer (chemins absolus incompatibles Docker)
+9. **vite.php réécrit** : client HMR injecté via `wp_head` priorité 1, `type="module"` via filtre `script_loader_tag`, suppression de `wp_enqueue_script_tag_attributes()` inexistante
