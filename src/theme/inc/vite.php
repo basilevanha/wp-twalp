@@ -12,9 +12,6 @@ namespace App;
  * Check if Vite dev server is running.
  */
 function vite_is_dev(): bool {
-	$dev_server = defined('VITE_DEV_SERVER') ? VITE_DEV_SERVER : 'http://localhost:5173';
-
-	// Check for the hot file (created by sync.js in dev mode)
 	$hot_file = get_template_directory() . '/dist/hot';
 	return file_exists($hot_file);
 }
@@ -31,22 +28,22 @@ function vite_dev_server_url(): string {
 }
 
 /**
+ * Inject Vite HMR client in dev mode (runs early in wp_head).
+ */
+add_action('wp_head', function () {
+	if (!vite_is_dev()) {
+		return;
+	}
+	$dev_url = vite_dev_server_url();
+	echo '<script type="module" src="' . esc_url($dev_url . '/@vite/client') . '"></script>' . "\n";
+}, 1);
+
+/**
  * Enqueue Vite assets.
  */
 function vite_enqueue_assets(): void {
 	if (vite_is_dev()) {
 		$dev_url = vite_dev_server_url();
-
-		// Vite client for HMR
-		add_action('wp_head', function () use ($dev_url) {
-			echo '<script type="module" src="' . esc_url($dev_url . '/@vite/client') . '"></script>' . "\n";
-		}, 1);
-
-		// Main entry point
-		wp_enqueue_script_tag_attributes(function ($attributes) {
-			$attributes['type'] = 'module';
-			return $attributes;
-		});
 
 		wp_enqueue_script(
 			'starter-theme-main',
@@ -91,3 +88,15 @@ function vite_enqueue_assets(): void {
 }
 
 add_action('wp_enqueue_scripts', __NAMESPACE__ . '\\vite_enqueue_assets');
+
+/**
+ * Add type="module" to our script tag (replaces WP's default type="text/javascript").
+ */
+add_filter('script_loader_tag', function ($tag, $handle) {
+	if ($handle === 'starter-theme-main') {
+		$tag = str_replace("type='text/javascript'", '', $tag);
+		$tag = str_replace('type="text/javascript"', '', $tag);
+		return str_replace('<script ', '<script type="module" ', $tag);
+	}
+	return $tag;
+}, 10, 2);

@@ -27,6 +27,9 @@ if (file_exists($autoload)) {
 // Initialize Timber.
 Timber::init();
 
+// Load theme classes.
+require_once __DIR__ . '/src/StarterSite.php';
+
 // Load theme configuration.
 require_once __DIR__ . '/inc/timber.php';
 require_once __DIR__ . '/inc/vite.php';

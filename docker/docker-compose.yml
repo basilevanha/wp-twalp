@@ -5,6 +5,7 @@ services:
       - "8080:80"
     volumes:
       - ../public:/var/www/html
+      - ../vendor:/var/www/vendor
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}

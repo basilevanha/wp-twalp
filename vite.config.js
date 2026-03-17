@@ -8,6 +8,9 @@ config();
 const THEME_DIR = process.env.THEME_DIR || './public/wp-content/themes/starter-theme';
 const resolvedThemeDir = path.resolve(__dirname, THEME_DIR);
 
+const isProduction = process.env.NODE_ENV === 'production';
+const themeBase = '/wp-content/themes/' + path.basename(resolvedThemeDir) + '/dist/';
+
 export default defineConfig({
   plugins: [
     // Watch PHP and Twig files in the theme directory for live reload
@@ -19,7 +22,9 @@ export default defineConfig({
 
   root: 'src',
 
-  base: '/wp-content/themes/' + path.basename(resolvedThemeDir) + '/dist/',
+  // In dev: serve from root so @vite/client and entry points work at simple paths
+  // In prod: prefix with theme path for correct asset URLs
+  base: isProduction ? themeBase : '/',
 
   build: {
     outDir: path.resolve(resolvedThemeDir, 'dist'),
@@ -36,7 +41,6 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     cors: true,
-    // Allow access from the WordPress site
     origin: 'http://localhost:5173',
   },
 
