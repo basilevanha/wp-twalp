@@ -1,0 +1,32 @@
+# WordPress installation
+public/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Environment
+.env
+.env.local
+
+# Database dumps
+database/*.sql
+
+# Build artifacts
+dist/
+
+# Timber starter-theme (temporary)
+_tmp_timber/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+npm-debug.log*

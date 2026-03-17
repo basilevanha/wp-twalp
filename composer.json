@@ -1,0 +1,19 @@
+{
+  "name": "starter/wp-boilerplate",
+  "description": "WordPress boilerplate with Timber, Vite, and ACF",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "timber/timber": "^2.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/theme/src/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true
+    }
+  }
+}
