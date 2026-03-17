@@ -12,52 +12,75 @@
 
 ## Structure des dossiers
 
+> **NOTE :** La structure des templates Twig a légèrement changé par rapport au plan initial.
+> Le plan prévoyait `src/templates/` avec les fichiers à plat (base.twig, index.twig, partials/).
+> En réalité, on a gardé la structure Timber originale avec des sous-dossiers :
+> `src/templates/layouts/`, `src/templates/templates/`, `src/templates/partials/`.
+> C'est plus fidèle à Timber et évite de modifier les chemins dans les fichiers PHP.
+
 ```
 wp-boilerplate/
 ├── bin/
-│   ├── setup.sh                 # CLI interactif de configuration
-│   └── sync.js                  # Script de copie src/ → thème WP
-├── database/                    # Dumps SQL optionnels
+│   ├── setup.sh                 # CLI interactif de configuration (À FAIRE)
+│   └── sync.js                  # Script de copie src/ → thème WP ✅
+├── database/                    # Dumps SQL optionnels ✅
 │   └── .gitkeep
 ├── docker/
-│   └── docker-compose.yml       # WordPress + MySQL + phpMyAdmin
+│   └── docker-compose.yml       # WordPress + MySQL + phpMyAdmin ✅
 ├── src/                         # === ESPACE DE TRAVAIL DU DEV ===
-│   ├── acf-json/                # ACF field groups (versionné dans git)
-│   ├── fonts/                   # Polices custom
-│   ├── images/                  # Images du thème
+│   ├── acf-json/                # ACF field groups (versionné dans git) ✅
+│   ├── fonts/                   # Polices custom ✅ (dossier vide)
+│   ├── images/                  # Images du thème ✅ (dossier vide)
 │   ├── js/
-│   │   └── main.js              # Point d'entrée JS
+│   │   └── main.js              # Point d'entrée JS ✅
 │   ├── scss/
-│   │   ├── main.scss            # Point d'entrée SCSS
-│   │   ├── _variables.scss
+│   │   ├── main.scss            # Point d'entrée SCSS ✅
+│   │   ├── _variables.scss      # ✅
 │   │   ├── base/
-│   │   ├── components/
-│   │   └── layouts/
+│   │   │   ├── _reset.scss      # ✅
+│   │   │   └── _typography.scss # ✅
+│   │   ├── components/          # ✅ (vide)
+│   │   └── layouts/             # ✅ (vide)
 │   ├── templates/               # Templates Twig (Timber)
-│   │   ├── base.twig
-│   │   ├── index.twig
-│   │   ├── single.twig
-│   │   ├── page.twig
-│   │   └── partials/
+│   │   ├── layouts/
+│   │   │   └── base.twig        # ✅
+│   │   ├── templates/
+│   │   │   ├── 404.twig         # ✅
+│   │   │   ├── archive.twig     # ✅
+│   │   │   ├── author.twig      # ✅
+│   │   │   ├── index.twig       # ✅
+│   │   │   ├── page.twig        # ✅
+│   │   │   ├── search.twig      # ✅
+│   │   │   ├── single.twig      # ✅
+│   │   │   └── single-password.twig # ✅
+│   │   └── partials/            # ✅ (tous les partials Timber)
 │   └── theme/                   # Fichiers PHP du thème
-│       ├── functions.php
-│       ├── index.php
-│       ├── style.css            # Header WP uniquement (metadata)
-│       ├── single.php
-│       ├── page.php
+│       ├── functions.php        # ✅ (modifié : charge autoload-path.php + inc/)
+│       ├── index.php            # ✅
+│       ├── style.css            # ✅
+│       ├── screenshot.png       # ✅
+│       ├── single.php           # ✅
+│       ├── page.php             # ✅
+│       ├── archive.php          # ✅
+│       ├── author.php           # ✅
+│       ├── search.php           # ✅
+│       ├── 404.php              # ✅
+│       ├── src/
+│       │   └── StarterSite.php  # ✅ (modifié : retiré enqueue_styles, géré par Vite)
 │       └── inc/
-│           ├── vite.php         # Helper d'enqueue des assets Vite
-│           ├── timber.php       # Configuration Timber
-│           ├── acf.php          # Paths ACF JSON
-│           └── cleanup.php      # Nettoyage wp_head, emojis, etc.
-├── public/                      # Installation WP (GITIGNORE)
-│   └── wp-content/themes/{nom}/ # ← BUILD OUTPUT (cible de compilation)
-├── .env.example
-├── .gitignore
-├── composer.json                # Timber v2
-├── package.json                 # Vite + plugins
-├── vite.config.js               # Config build + sync plugin
-└── README.md
+│           ├── vite.php         # ✅ Helper d'enqueue des assets Vite
+│           ├── timber.php       # ✅ Configuration Timber
+│           ├── acf.php          # ✅ Paths JSON ACF
+│           └── cleanup.php      # ✅ Nettoyage wp_head, emojis, etc.
+├── public/                      # Installation WP (GITIGNORE) ✅
+│   └── wp-content/themes/starter-theme/ # ← BUILD OUTPUT ✅
+├── .env.example                 # ✅
+├── .env                         # ✅ (gitignored)
+├── .gitignore                   # ✅
+├── composer.json                # ✅ Timber v2.3.3
+├── package.json                 # ✅ Vite 6 + plugins
+├── vite.config.js               # ✅ Config build + live-reload
+└── README.md                    # À FAIRE
 ```
 
 ### Principe clé
@@ -70,14 +93,14 @@ wp-boilerplate/
 
 ## Stack technique
 
-| Outil         | Rôle                                                             |
-| ------------- | ---------------------------------------------------------------- |
-| **Vite**      | Build JS/SCSS, HMR, dev server                                   |
-| **SCSS**      | Préprocesseur CSS (compatible Timber/BEM, zero-config avec Vite) |
-| **Timber v2** | Templating Twig pour WordPress (via Composer)                    |
-| **ACF**       | Custom fields, JSON sync versionné dans git                      |
-| **WP-CLI**    | Utilisé par le setup script pour configurer WP                   |
-| **Docker**    | Option d'env local (alternative à DevKinsta)                     |
+| Outil         | Rôle                                                             | Statut |
+| ------------- | ---------------------------------------------------------------- | ------ |
+| **Vite 6**    | Build JS/SCSS, HMR, dev server                                  | ✅     |
+| **SCSS**      | Préprocesseur CSS (compatible Timber/BEM, zero-config avec Vite) | ✅     |
+| **Timber v2.3.3** | Templating Twig pour WordPress (via Composer)               | ✅     |
+| **ACF**       | Custom fields, JSON sync versionné dans git                      | ✅ config prête, plugin à installer dans WP |
+| **WP-CLI**    | Utilisé par le setup script pour configurer WP                   | À FAIRE (Phase 4) |
+| **Docker**    | Option d'env local (alternative à DevKinsta)                     | ✅     |
 
 ### Pourquoi SCSS plutôt que Tailwind ?
 
@@ -88,38 +111,44 @@ wp-boilerplate/
 
 ### Base du thème
 
-- L'utilisateur télécharge le **timber/starter-theme** officiel
-- On le réorganise dans `src/` (PHP dans `src/theme/`, Twig dans `src/templates/`, etc.)
-- On y ajoute la couche Vite (inc/vite.php) et le cleanup
+- ~~L'utilisateur télécharge le **timber/starter-theme** officiel~~ ✅ Fait et supprimé (`_tmp_timber/`)
+- ~~On le réorganise dans `src/`~~ ✅ PHP dans `src/theme/`, Twig dans `src/templates/`
+- ~~On y ajoute la couche Vite (inc/vite.php) et le cleanup~~ ✅
 - Nom par défaut : `starter-theme` (renommable via le CLI)
 
 ---
 
 ## Build system (Vite)
 
-### Mode développement (`npm run dev`)
+### Mode développement (`npm run dev`) ✅
 
-1. `sync.js` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR`
+> **CHANGEMENT vs plan initial :** Le plan prévoyait un "plugin Vite custom" (`vite-plugin-sync`)
+> intégré dans `vite.config.js`. En pratique, le watch est géré par `bin/sync.js --watch`
+> lancé en parallèle de Vite via `&` dans le script npm. Plus simple, même résultat.
+
+1. `sync.js --watch` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR` puis surveille les changements
 2. Vite dev server démarre sur `localhost:5173`
-3. Un plugin Vite custom (`vite-plugin-sync`) watch `src/` et re-copie les fichiers PHP/Twig à chaque sauvegarde
-4. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
-5. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
+3. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
+4. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
 
-### Mode production (`npm run build`)
+### Mode production (`npm run build`) ✅
 
-1. `sync.js` copie PHP/Twig/ACF dans `THEME_DIR`
+1. `sync.js --production` copie PHP/Twig/ACF dans `THEME_DIR` + copie `vendor/`
 2. Vite compile SCSS → CSS et bundle JS avec hashes dans `THEME_DIR/dist/`
 3. Génère un `manifest.json` pour les assets hashés
-4. Copie `vendor/` (Timber) dans le thème pour le déploiement
 
-### Le pont PHP ↔ Vite (`src/theme/inc/vite.php`)
+### Le pont PHP ↔ Vite (`src/theme/inc/vite.php`) ✅
 
-- **En dev :** enqueue `http://localhost:5173/@vite/client` + entry point via module
-- **En prod :** lit `dist/manifest.json` et enqueue les fichiers hashés
+> **CHANGEMENT vs plan initial :** Le plan prévoyait la détection du dev server via une variable
+> d'environnement ou un check HTTP. En pratique, on utilise un fichier `dist/hot` créé par
+> `sync.js` qui contient l'URL du dev server. Plus fiable, pas de requête HTTP à chaque page load.
+
+- **En dev :** détecte `dist/hot`, enqueue le client HMR + entry point via `<script type="module">`
+- **En prod :** lit `dist/.vite/manifest.json` et enqueue les fichiers hashés
 
 ---
 
-## CLI Setup (`bin/setup.sh`)
+## CLI Setup (`bin/setup.sh`) — ⏳ À FAIRE (Phase 4)
 
 Script interactif qui :
 
@@ -127,19 +156,22 @@ Script interactif qui :
 2. **Si DevKinsta** : demande le chemin du site → configure `THEME_DIR` dans `.env`
 3. **Si Docker** : demande les credentials DB → lance `docker-compose up`
 4. **Si WP existant** : demande le chemin → configure `THEME_DIR`
-5. **Nettoyage WP** (via WP-CLI) :
+5. **Questions fonctionnelles** (ajout par rapport au plan initial) :
+   - "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require
+   - "As-tu besoin de [feature] ?" → ajoute/retire des fichiers du starter-theme
+6. **Nettoyage WP** (via WP-CLI) :
     - Supprime Hello Dolly, Akismet
     - Supprime les thèmes par défaut inutiles
     - Supprime le contenu sample (post, page, commentaire)
     - Configure les permalinks en `/%postname%/`
-6. **Installe** ACF et Timber via WP-CLI (ou invite à le faire manuellement)
-7. **Lance** `composer install` (Timber v2)
-8. **Sync** initial + crée le symlink `acf-json`
-9. **Active** le thème
+7. **Installe** ACF et Timber via WP-CLI (ou invite à le faire manuellement)
+8. **Lance** `composer install` (Timber v2)
+9. **Sync** initial + crée le symlink `acf-json`
+10. **Active** le thème
 
 ---
 
-## ACF JSON Sync
+## ACF JSON Sync ✅
 
 - Les fichiers JSON vivent dans `src/acf-json/` (versionné dans git)
 - Un **symlink** est créé : `THEME_DIR/acf-json → src/acf-json`
@@ -148,7 +180,7 @@ Script interactif qui :
 
 ---
 
-## Compatibilité DevKinsta
+## Compatibilité DevKinsta ✅ (config prête, non testé)
 
 DevKinsta stocke les sites dans `~/DevKinsta/public/{site-name}/`. Le boilerplate s'y connecte simplement via la variable `THEME_DIR` dans `.env` :
 
@@ -160,27 +192,36 @@ Le build system copie dans ce dossier, DevKinsta sert le site. Aucune modificati
 
 ---
 
-## Docker (alternative à DevKinsta)
+## Docker (alternative à DevKinsta) ✅
 
 `docker/docker-compose.yml` avec :
 
 - WordPress (Apache) sur `localhost:8080`
-- MySQL 8.0
+- MySQL 8.0 avec healthcheck
 - phpMyAdmin sur `localhost:8081`
-- Volume : `./public` monté comme document root
+- Volume : `../public` monté comme document root
+- Variables d'env depuis `.env` avec valeurs par défaut
 
 ---
 
-## .gitignore
+## .gitignore ✅
 
 ```
 public/
 node_modules/
 vendor/
 .env
+.env.local
 database/*.sql
 dist/
+_tmp_timber/
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+*.log
+npm-debug.log*
 ```
 
 **Uniquement le code source est versionné.** Après un `git clone` : `composer install` + `npm install` + `npm run setup`.
@@ -189,43 +230,48 @@ dist/
 
 ## Séquence d'implémentation
 
-### Phase 1 : Fondations (config)
+### Phase 1 : Fondations (config) ✅ TERMINÉE
 
-- [ ] `package.json` (Vite, sass, vite-plugin-live-reload)
-- [ ] `composer.json` (Timber v2)
-- [ ] `vite.config.js` (entry points, output, sync plugin, live-reload)
-- [ ] `.env.example`
-- [ ] `.gitignore`
+- [x] `package.json` (Vite 6, sass, chokidar, dotenv, vite-plugin-live-reload)
+- [x] `composer.json` (Timber v2.3.3)
+- [x] `vite.config.js` (entry points, output, live-reload)
+- [x] `.env.example` + `.env`
+- [x] `.gitignore`
 
-### Phase 2 : Thème source (`src/`)
+### Phase 2 : Thème source (`src/`) ✅ TERMINÉE
 
-- [ ] `src/theme/` — PHP skeleton (functions.php, style.css, index.php, inc/\*.php)
-- [ ] `src/theme/inc/vite.php` — helper enqueue Vite dev/prod
-- [ ] `src/theme/inc/timber.php` — config Timber
-- [ ] `src/theme/inc/acf.php` — paths JSON ACF
-- [ ] `src/templates/` — templates Twig de base
-- [ ] `src/scss/` — scaffold SCSS
-- [ ] `src/js/main.js` — entry point
+- [x] `src/theme/` — PHP du starter-theme Timber réorganisé
+- [x] `src/theme/functions.php` — modifié pour autoload-path.php + inc/
+- [x] `src/theme/src/StarterSite.php` — modifié, retiré enqueue_styles (géré par Vite)
+- [x] `src/theme/inc/vite.php` — helper enqueue Vite dev/prod (fichier hot + manifest)
+- [x] `src/theme/inc/timber.php` — config chemins Twig
+- [x] `src/theme/inc/acf.php` — paths JSON ACF
+- [x] `src/theme/inc/cleanup.php` — nettoyage wp_head, emojis, generator, etc.
+- [x] `src/templates/` — tous les templates Twig du starter-theme (layouts/, templates/, partials/)
+- [x] `src/scss/` — scaffold SCSS (main.scss, _variables.scss, base/_reset.scss, base/_typography.scss)
+- [x] `src/js/main.js` — entry point qui importe le SCSS
 
-### Phase 3 : Build system
+### Phase 3 : Build system ✅ TERMINÉE
 
-- [ ] `bin/sync.js` — copie src/ → THEME_DIR
-- [ ] Plugin Vite custom pour watch/sync PHP et Twig
-- [ ] Tester HMR CSS + live reload PHP/Twig
+- [x] `bin/sync.js` — copie src/ → THEME_DIR, génère autoload-path.php, crée symlink acf-json, fichier hot
+- [x] Watch mode via `sync.js --watch` + `vite-plugin-live-reload` (pas de plugin Vite custom, plus simple)
+- [x] Build prod testé : CSS/JS compilés avec hashes, manifest.json généré
+- [ ] **À TESTER** : HMR CSS + live reload PHP/Twig dans le navigateur (thème pas encore activé dans WP)
 
-### Phase 4 : CLI Setup
+### Phase 4 : CLI Setup ⏳ À FAIRE
 
 - [ ] `bin/setup.sh` — script interactif
 - [ ] Support DevKinsta / Docker / WP existant
+- [ ] Questions fonctionnelles (ACF oui/non, features optionnelles)
 - [ ] Nettoyage WP via WP-CLI
-- [ ] Création symlink ACF
+- [ ] Création symlink ACF (déjà géré par sync.js, le CLI l'appellera)
 
-### Phase 5 : Docker
+### Phase 5 : Docker ✅ TERMINÉE
 
-- [ ] `docker/docker-compose.yml`
-- [ ] Test du flow complet Docker
+- [x] `docker/docker-compose.yml` (WordPress + MySQL 8 + phpMyAdmin)
+- [x] Test : containers lancés, WordPress installé sur localhost:8080
 
-### Phase 6 : Documentation
+### Phase 6 : Documentation ⏳ À FAIRE
 
 - [ ] `README.md` avec instructions complètes
 
@@ -233,15 +279,27 @@ dist/
 
 ## Vérification / Test
 
-1. **Docker :** `git clone` → `npm install` → `composer install` → `npm run setup` (Docker) → `npm run dev` → ouvrir `localhost:8080` → modifier un fichier SCSS → vérifier HMR → modifier un fichier Twig → vérifier live reload
-2. **DevKinsta :** Créer un site DevKinsta → `npm run setup` (DevKinsta) → `npm run dev` → vérifier que le thème est actif et que le HMR fonctionne
-3. **Build prod :** `npm run build` → vérifier que `THEME_DIR/dist/` contient les assets hashés et le `manifest.json`
-4. **ACF :** Créer un field group dans wp-admin → vérifier que le JSON apparaît dans `src/acf-json/` → commiter → vérifier que ça se charge sur un autre environnement
+1. ✅ **Docker :** containers lancés, WordPress installé et accessible sur `localhost:8080`
+2. ✅ **Sync :** `node bin/sync.js` copie tous les fichiers correctement dans `public/wp-content/themes/starter-theme/`
+3. ✅ **Build prod :** `vite build` produit les assets hashés + `manifest.json`
+4. ⏳ **HMR :** activer le thème dans WP → `npm run dev` → tester le HMR SCSS et live reload Twig
+5. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
+6. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
 
 ---
 
 ## Points d'attention
 
-- **Autoload Composer :** Le thème (dans `public/`) doit charger `vendor/autoload.php` qui est à la racine du repo. Le sync script génère un fichier `autoload-path.php` avec le chemin absolu.
+- **Autoload Composer :** ✅ Résolu via `autoload-path.php` généré par `sync.js` qui contient le chemin absolu vers `vendor/autoload.php` du repo. En prod, `vendor/` est copié dans le thème.
 - **HTTPS DevKinsta :** Si DevKinsta sert en HTTPS, Vite doit aussi être en HTTPS (configurable dans `vite.config.js`).
-- **Déploiement :** `npm run build` produit un thème autonome. Pour la prod, `vendor/` (Timber) doit être inclus dans le thème. Le build script s'en charge.
+- **Déploiement :** `npm run build` produit un thème autonome. Pour la prod, `vendor/` (Timber) est inclus automatiquement par `sync.js --production`.
+
+---
+
+## Changements par rapport au plan initial
+
+1. **Structure templates Twig** : gardé la hiérarchie Timber (`layouts/`, `templates/`, `partials/`) au lieu de tout mettre à plat dans `src/templates/`
+2. **Watch/sync** : `sync.js --watch` lancé en parallèle de Vite via `&` dans npm script, au lieu d'un plugin Vite custom — plus simple et découplé
+3. **Détection dev server** : fichier `dist/hot` au lieu d'un check HTTP ou variable d'env — plus fiable
+4. **Manifest path** : Vite 6 génère le manifest dans `dist/.vite/manifest.json` (pas `dist/manifest.json`), `vite.php` adapté en conséquence
+5. **CLI setup** : ajout prévu de questions fonctionnelles ("utilises-tu ACF ?", etc.) pour retirer/ajouter des fichiers du boilerplate
