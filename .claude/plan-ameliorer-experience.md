@@ -44,12 +44,19 @@ Le script :
   Ctrl+C pour arrêter.
 ```
 
-4. Sur Ctrl+C : tue sync + vite, puis demande "Arrêter les containers Docker ? [y/N]"
+4. Sur Ctrl+C (ou fermeture de VS Code) : tue sync + vite proprement. Docker continue en background (c'est voulu : redémarrage instantané de `npm run dev`).
+
+Le message inclut aussi :
+
+```
+  Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.
+  Pour tout stopper : npm run stop
+```
 
 **Fichiers modifiés :**
 
 - `bin/dev.js` — **nouveau**
-- `package.json` — `"dev": "node bin/dev.js"`
+- `package.json` — `"dev": "node bin/dev.js"`, `"stop": "docker compose -f docker/docker-compose.yml --env-file .env down"`
 
 ---
 
@@ -105,7 +112,8 @@ Si oui → exécute `npm run dev` (qui lance le nouveau `bin/dev.js`).
 ## Vérification
 
 1. `npm run dev` → affiche le message avec les bons URLs (`:8080`, pas `:5173`)
-2. Ctrl+C → tue sync + vite proprement, propose d'arrêter Docker
+2. Ctrl+C → tue sync + vite proprement (Docker continue en background, c'est normal)
+   3b. `npm run stop` → arrête les containers Docker du projet
 3. Deux projets différents avec des `PROJECT_NAME` différents → pas de conflit de ports/volumes
 4. `npm run setup` → à la fin, propose de lancer `npm run dev`
 5. Vérifier que `ps aux | grep sync` ne montre plus de processus orphelin après Ctrl+C
