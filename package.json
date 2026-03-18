@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node bin/sync.js --watch & vite",
+    "dev": "node bin/dev.js",
     "build": "node bin/sync.js --production && vite build",
     "sync": "node bin/sync.js",
-    "setup": "bash bin/setup.sh"
+    "setup": "bash bin/setup.sh",
+    "stop": "docker compose -f docker/docker-compose.yml --env-file .env down"
   },
   "devDependencies": {
     "chokidar": "^4.0.0",

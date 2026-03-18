@@ -264,6 +264,8 @@ ENV_CHOICE="$ENV_CHOICE"
 USE_DOCKER="$USE_DOCKER"
 THEME_DIR="$THEME_DIR"
 WP_HOME="$WP_HOME"
+WP_PORT="${WP_PORT:-8080}"
+PMA_PORT="${PMA_PORT:-8081}"
 VENDOR_PATH="$VENDOR_PATH"
 DB_NAME="$DB_NAME"
 DB_USER="$DB_USER"
@@ -285,15 +287,23 @@ if [ -f "$ENV_FILE" ]; then
   ask_yn ".env already exists. Overwrite?" "y" WRITE_ENV
 fi
 
+WP_PORT="${WP_PORT:-8080}"
+PMA_PORT="${PMA_PORT:-8081}"
+
 if [ "$WRITE_ENV" = "y" ]; then
   cat > "$ENV_FILE" <<EOF
 # Project
 PROJECT_NAME=$PROJECT_NAME
 THEME_DIR=$THEME_DIR
 
+# Docker
+COMPOSE_PROJECT_NAME=$PROJECT_NAME
+WP_PORT=$WP_PORT
+PMA_PORT=$PMA_PORT
+
 # WordPress
-WP_HOME=$WP_HOME
-WP_SITEURL=$WP_HOME
+WP_HOME=http://localhost:$WP_PORT
+WP_SITEURL=http://localhost:$WP_PORT
 
 # Database
 DB_NAME=$DB_NAME
@@ -383,18 +393,18 @@ if [ "$USE_DOCKER" = "y" ]; then
   fi
 
   # Check if containers are already running
-  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" ps --status running 2>/dev/null | grep -q "wordpress"; then
+  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" ps --status running 2>/dev/null | grep -q "wordpress"; then
     success "Docker containers already running"
   else
     info "Starting Docker containers..."
-    (cd "$ROOT_DIR/docker" && docker compose up -d)
+    (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" up -d)
     success "Docker containers started"
   fi
 
   info "Waiting for WordPress to be ready..."
   MAX_WAIT=60
   ELAPSED=0
-  while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080" | grep -q "200\|302"; do
+  while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WP_PORT" | grep -q "200\|302"; do
     sleep 2
     ELAPSED=$((ELAPSED + 2))
     if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
@@ -416,11 +426,11 @@ success "Files synced to theme directory"
 WP_CLI=""
 
 if [ "$USE_DOCKER" = "y" ]; then
-  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T wordpress wp --info &>/dev/null 2>&1; then
+  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" exec -T wordpress wp --info &>/dev/null 2>&1; then
     WP_CLI="docker compose -f $ROOT_DIR/docker/docker-compose.yml exec -T wordpress wp --allow-root"
   else
     info "Installing WP-CLI in Docker container..."
-    docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T wordpress bash -c \
+    docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" exec -T wordpress bash -c \
       "curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp" 2>/dev/null && \
     WP_CLI="docker compose -f $ROOT_DIR/docker/docker-compose.yml exec -T wordpress wp --allow-root" || \
     warn "Could not install WP-CLI in Docker container."
@@ -487,13 +497,20 @@ echo ""
 echo -e "  ${BOLD}Theme:${NC}       $PROJECT_NAME"
 echo -e "  ${BOLD}Theme dir:${NC}   $THEME_DIR"
 if [ "$USE_DOCKER" = "y" ]; then
-echo -e "  ${BOLD}WordPress:${NC}   http://localhost:8080"
-echo -e "  ${BOLD}phpMyAdmin:${NC}  http://localhost:8081"
+echo -e "  ${BOLD}WordPress:${NC}   http://localhost:$WP_PORT"
+echo -e "  ${BOLD}phpMyAdmin:${NC}  http://localhost:$PMA_PORT"
 else
 echo -e "  ${BOLD}WordPress:${NC}   $WP_HOME"
 fi
 echo ""
-echo -e "  ${BOLD}Next steps:${NC}"
+echo -e "  ${BOLD}Commands:${NC}"
 echo -e "    ${CYAN}npm run dev${NC}    Start development (Vite + file sync)"
 echo -e "    ${CYAN}npm run build${NC}  Build for production"
+echo -e "    ${CYAN}npm run stop${NC}   Stop Docker containers"
 echo ""
+
+# ── Optionally launch dev server ──
+ask_yn "Launch development server now?" "y" LAUNCH_DEV
+if [ "$LAUNCH_DEV" = "y" ]; then
+  exec npm run dev
+fi
