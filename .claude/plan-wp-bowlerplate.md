@@ -22,7 +22,8 @@
 wp-boilerplate/
 ├── bin/
 │   ├── setup.sh                 # CLI interactif de configuration ✅
-│   └── sync.js                  # Script de copie src/ → thème WP ✅
+│   ├── sync.js                  # Script de copie src/ → thème WP ✅
+│   └── dev.js                   # Orchestrateur dev (sync + vite + banner + cleanup) ✅
 ├── database/                    # Dumps SQL optionnels ✅
 │   └── .gitkeep
 ├── docker/
@@ -66,12 +67,15 @@ wp-boilerplate/
 │       ├── search.php           # ✅
 │       ├── 404.php              # ✅
 │       ├── src/
-│       │   └── StarterSite.php  # ✅ (modifié : retiré enqueue_styles, géré par Vite)
+│       │   └── StarterSite.php  # ✅ (nettoyé : retiré démo foo/bar/myfoo, text domain starter-theme)
+│       ├── languages/           # ✅ Dossier traductions (.pot/.po/.mo)
+│       │   └── .gitkeep
 │       └── inc/
 │           ├── vite.php         # ✅ Helper d'enqueue des assets Vite
 │           ├── timber.php       # ✅ Configuration Timber
 │           ├── acf.php          # ✅ Paths JSON ACF
-│           └── cleanup.php      # ✅ Nettoyage wp_head, emojis, etc.
+│           ├── cleanup.php      # ✅ Nettoyage wp_head, emojis, etc.
+│           └── i18n.php         # ✅ load_theme_textdomain()
 ├── public/                      # Installation WP (GITIGNORE) ✅
 │   └── wp-content/themes/starter-theme/ # ← BUILD OUTPUT ✅
 ├── .env.example                 # ✅
@@ -99,7 +103,7 @@ wp-boilerplate/
 | **SCSS**      | Préprocesseur CSS (compatible Timber/BEM, zero-config avec Vite) | ✅     |
 | **Timber v2.3.3** | Templating Twig pour WordPress (via Composer)               | ✅     |
 | **ACF**       | Custom fields, JSON sync versionné dans git                      | ✅ config prête, plugin à installer dans WP |
-| **WP-CLI**    | Utilisé par le setup script pour configurer WP                   | À FAIRE (Phase 4) |
+| **WP-CLI**    | Utilisé par le setup script pour configurer WP                   | ✅     |
 | **Docker**    | Option d'env local (alternative à DevKinsta)                     | ✅     |
 
 ### Pourquoi SCSS plutôt que Tailwind ?
@@ -122,14 +126,22 @@ wp-boilerplate/
 
 ### Mode développement (`npm run dev`) ✅
 
-> **CHANGEMENT vs plan initial :** Le plan prévoyait un "plugin Vite custom" (`vite-plugin-sync`)
-> intégré dans `vite.config.js`. En pratique, le watch est géré par `bin/sync.js --watch`
-> lancé en parallèle de Vite via `&` dans le script npm. Plus simple, même résultat.
+> **CHANGEMENT Phase 7 :** `npm run dev` lance désormais `bin/dev.js` au lieu de `sync.js --watch & vite`.
+> `dev.js` orchestre les deux processus enfants, affiche un banner clair avec les URLs,
+> et tue proprement les deux processus sur Ctrl+C (plus de sync.js orphelin).
 
-1. `sync.js --watch` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR` puis surveille les changements
-2. Vite dev server démarre sur `localhost:5173`
-3. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
-4. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
+1. `bin/dev.js` lance `sync.js --watch` + `vite` comme child processes
+2. `sync.js` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR` puis surveille les changements
+3. Vite dev server démarre sur `localhost:5173`
+4. `dev.js` détecte le "ready" de Vite et affiche un banner avec :
+   - WordPress : `http://localhost:{WP_PORT}` (le bon lien à ouvrir)
+   - Vite HMR : `http://localhost:5173` (pour info)
+   - phpMyAdmin : `http://localhost:{PMA_PORT}`
+   - Instructions : "Ctrl+C pour arrêter. Docker continue en arrière-plan."
+5. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
+6. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
+7. Sur Ctrl+C ou fermeture VS Code : `dev.js` tue sync + vite proprement (pas d'orphelins)
+8. `npm run stop` arrête les containers Docker du projet
 
 ### Mode production (`npm run build`) ✅
 
@@ -160,20 +172,28 @@ wp-boilerplate/
 
 ## CLI Setup (`bin/setup.sh`) — ✅ TERMINÉ
 
-Script interactif en 5 étapes :
+Script interactif en 4 étapes, résilient (reprend après échec) :
 
-1. **Nom du projet** : demande un slug (sanitisé automatiquement : lowercase, tirets)
+> **CHANGEMENT Phase 4b :** Ajout de pre-flight checks (node, npm, Docker), state file `.setup-state`
+> pour reprendre après un échec sans retaper les réponses, opérations idempotentes (.env, Docker),
+> remplacement dynamique du text domain dans tous les fichiers PHP/Twig, configuration du titre WP
+> via WP-CLI, et question "Lancer dev ?" à la fin.
+
+1. **Nom du projet** : demande un slug (sanitisé automatiquement : lowercase, tirets) → utilisé comme nom de thème, text domain, et `COMPOSE_PROJECT_NAME`
 2. **Environnement** : choix entre Docker / DevKinsta / WP existant
-   - Docker : demande credentials DB, configure `VENDOR_PATH=/var/www/vendor`, lance `docker compose up -d`
+   - Docker : vérifie que Docker daemon tourne, demande credentials DB, configure `VENDOR_PATH=/var/www/vendor`, `WP_PORT`, `PMA_PORT`
    - DevKinsta : demande le chemin du site → configure `THEME_DIR` avec chemin absolu, `VENDOR_PATH` vide
    - WP existant : demande le chemin WP → configure `THEME_DIR`, `VENDOR_PATH` vide
 3. **Features** : "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require dans `functions.php`
-4. **Configuration** : génère `.env`, met à jour `Theme Name` dans `style.css`
-5. **Setup** :
+4. **Configuration & Setup** :
+   - Génère `.env` (avec confirmation si existe déjà) incluant `COMPOSE_PROJECT_NAME`, `WP_PORT`, `PMA_PORT`
+   - Met à jour `Theme Name` et `Text Domain` dans `style.css`
+   - Remplace le text domain `'starter-theme'` par le slug du projet dans tous les PHP/Twig
    - `composer install` + `npm install`
-   - Docker : démarre les containers, attend que WP réponde
+   - Docker : démarre les containers (scopés par projet), attend que WP réponde
    - `node bin/sync.js` (sync initial)
    - WP-CLI (installé automatiquement dans le container Docker si absent) :
+     - Configure le titre du site (`blogname`)
      - Active le thème
      - Supprime Hello Dolly, Akismet
      - Supprime twentytwentythree/four/five
@@ -181,6 +201,12 @@ Script interactif en 5 étapes :
      - Permalinks `/%postname%/`
      - Timezone `Europe/Paris`
    - Fallback : instructions manuelles si WP-CLI non disponible
+   - **Propose de lancer `npm run dev`** directement
+
+**Résilience :**
+- Pre-flight checks : vérifie node, npm (fatal), composer (warning), Docker (si choisi)
+- State file `.setup-state` : sauvegarde les réponses après les questions. Si le script échoue, on relance et il propose de reprendre avec les réponses sauvées
+- Supprimé automatiquement en cas de succès
 
 ---
 
@@ -209,17 +235,20 @@ Le build system copie dans ce dossier, DevKinsta sert le site. Aucune modificati
 
 `docker/docker-compose.yml` avec :
 
-- WordPress (Apache) sur `localhost:8080`
+- WordPress (Apache) sur `localhost:${WP_PORT}` (défaut 8080)
 - MySQL 8.0 avec healthcheck
-- phpMyAdmin sur `localhost:8081`
+- phpMyAdmin sur `localhost:${PMA_PORT}` (défaut 8081)
 - Volume : `../public` monté comme document root
-- Volume : `../vendor` monté sur `/var/www/vendor` (ajouté Phase 3, voir ci-dessous)
-- Variables d'env depuis `.env` avec valeurs par défaut
+- Volume : `../vendor` monté sur `/var/www/vendor`
+- Variables d'env depuis `.env` via `--env-file`
+- **Scopé par projet** via `COMPOSE_PROJECT_NAME` → pas de conflit entre projets
 
 > **CHANGEMENT Phase 3 :** Ajout du volume `../vendor:/var/www/vendor` pour que le container
-> WordPress puisse accéder à l'autoload Composer. Le `sync.js` génère `autoload-path.php` avec
-> le chemin `/var/www/vendor/autoload.php` quand `VENDOR_PATH` est défini dans `.env`.
-> Sans ce volume, le chemin local macOS (`/Users/...`) n'existait pas dans le container → fatal error.
+> WordPress puisse accéder à l'autoload Composer.
+
+> **CHANGEMENT Phase 7 :** Ports rendus dynamiques (`WP_PORT`, `PMA_PORT`). `COMPOSE_PROJECT_NAME`
+> ajouté pour scoper containers, volumes et réseaux par projet. Deux projets différents peuvent
+> tourner en parallèle sur des ports différents sans conflit.
 
 ---
 
@@ -231,6 +260,7 @@ node_modules/
 vendor/
 .env
 .env.local
+.setup-state
 database/*.sql
 dist/
 _tmp_timber/
@@ -300,6 +330,31 @@ npm-debug.log*
 - [x] Activation du thème via WP-CLI
 - [x] Fallback gracieux si WP-CLI/Docker/Composer/npm non disponibles
 
+### Phase 4b : Setup résilient + nettoyage contenu ✅ TERMINÉE
+
+**Setup résilient :**
+- [x] Pre-flight checks (node, npm, composer, Docker daemon)
+- [x] State file `.setup-state` pour reprendre après échec sans retaper les réponses
+- [x] Opérations idempotentes (.env, Docker containers)
+- [x] Configuration titre WP via WP-CLI (`blogname`)
+- [x] Proposition "Lancer dev ?" à la fin du setup
+
+**Nettoyage contenu hardcodé :**
+- [x] Supprimé démo Timber dans `StarterSite.php` (foo/bar/stuff/notes/myfoo)
+- [x] Supprimé `'foo' => 'bar'` dans `index.php`
+- [x] Supprimé `{{ foo }}` dans `index.twig`
+- [x] Footer : `Copyright 2026` → `{{ site.name }} © {{ 'now'|date('Y') }}`
+- [x] Internationalisé les titres dans `archive.php`, `search.php`, `author.php`
+
+**i18n (translation-ready par défaut) :**
+- [x] `src/theme/inc/i18n.php` — `load_theme_textdomain()`
+- [x] `src/theme/languages/.gitkeep` — dossier traductions
+- [x] `Text Domain: starter-theme` + `Domain Path: /languages` dans `style.css`
+- [x] `require_once inc/i18n.php` dans `functions.php`
+- [x] Toutes les chaînes UI wrappées avec `{{ __('...', 'starter-theme') }}` dans 10 templates Twig
+- [x] Text domain fixé à `'starter-theme'` (remplacé dynamiquement par le slug du projet via `setup.sh`)
+- [x] Le thème est toujours translation-ready — pas de question dans le setup, c'est un standard
+
 ### Phase 5 : Docker ✅ TERMINÉE
 
 - [x] `docker/docker-compose.yml` (WordPress + MySQL 8 + phpMyAdmin)
@@ -309,16 +364,35 @@ npm-debug.log*
 
 - [ ] `README.md` avec instructions complètes
 
+### Phase 7 : DX — Expérience développeur ✅ TERMINÉE
+
+- [x] `bin/dev.js` — orchestrateur qui lance sync + vite comme child processes
+- [x] Banner clair au démarrage avec les URLs (WordPress, Vite HMR, phpMyAdmin)
+- [x] Cleanup propre sur Ctrl+C / fermeture VS Code (plus de sync.js orphelin)
+- [x] `npm run stop` — arrête les containers Docker du projet
+- [x] Ports Docker dynamiques (`WP_PORT`, `PMA_PORT`) dans `.env`
+- [x] `COMPOSE_PROJECT_NAME` pour scoper containers/volumes/réseaux par projet
+- [x] Deux projets peuvent tourner en parallèle sur des ports différents
+
 ---
 
 ## Vérification / Test
 
 1. ✅ **Docker :** containers lancés, WordPress installé et accessible sur `localhost:8080`
-2. ✅ **Sync :** `node bin/sync.js` copie tous les fichiers correctement dans `public/wp-content/themes/starter-theme/`
+2. ✅ **Sync :** `node bin/sync.js` copie tous les fichiers correctement
 3. ✅ **Build prod :** `vite build` produit les assets hashés + `manifest.json`
 4. ✅ **HMR :** thème activé dans WP → `npm run dev` → HMR SCSS (injection sans reload) + live reload Twig (full reload) fonctionnels
-5. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
-6. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
+5. ✅ **Setup complet :** `npm run setup` → questions → .env → Docker → sync → WP-CLI → tout fonctionne
+6. ✅ **Setup resume :** interruption → relance → reprend avec les réponses sauvées
+7. ✅ **Setup pre-flight :** Docker non lancé → erreur claire avant les questions
+8. ✅ **Nettoyage contenu :** plus de foo/bar, footer avec site.name, titre WP = PROJECT_NAME
+9. ✅ **i18n :** toutes les chaînes wrappées avec `__()`, text domain remplacé par le slug du projet
+10. ✅ **Banner dev :** `npm run dev` → affiche les bons URLs (WordPress `:8080`, pas Vite `:5173`)
+11. ✅ **Cleanup dev :** Ctrl+C → sync + vite tués proprement, aucun orphelin
+12. ✅ **npm run stop :** arrête les containers Docker
+13. ✅ **Docker scoping :** containers/volumes préfixés par le nom du projet, pas de conflit multi-projets
+14. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
+15. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
 
 ---
 
@@ -342,3 +416,10 @@ npm-debug.log*
 7. **Vite base conditionnel** : `base: '/'` en dev, `base: '/wp-content/themes/{theme}/dist/'` en prod — le plan initial avait un base fixe qui cassait `@vite/client` en dev
 8. **StarterSite require** : `require_once` explicite au lieu de dépendre de l'autoload PSR-4 Composer (chemins absolus incompatibles Docker)
 9. **vite.php réécrit** : client HMR injecté via `wp_head` priorité 1, `type="module"` via filtre `script_loader_tag`, suppression de `wp_enqueue_script_tag_attributes()` inexistante
+10. **Setup résilient** : pre-flight checks, state file `.setup-state` pour reprendre après échec, opérations idempotentes
+11. **Nettoyage contenu** : supprimé toutes les démos Timber (foo/bar/stuff/notes/myfoo), footer dynamique, titre WP configuré via WP-CLI
+12. **i18n** : thème toujours translation-ready (text domain `starter-theme`, `load_theme_textdomain()`, toutes les chaînes UI wrappées avec `__()`)
+13. **Text domain dynamique** : `setup.sh` remplace `'starter-theme'` par le slug du projet dans tous les PHP/Twig via `sed`
+14. **Orchestrateur dev** : `bin/dev.js` remplace `sync.js --watch & vite` — banner clair, cleanup propre, plus d'orphelins
+15. **Docker scopé** : `COMPOSE_PROJECT_NAME`, ports dynamiques (`WP_PORT`, `PMA_PORT`) — multi-projets sans conflit
+16. **npm run stop** : commande dédiée pour arrêter les containers Docker du projet
