@@ -190,12 +190,58 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
 
       USE_DOCKER="y"
       THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
-      WP_HOME="http://localhost:8080"
       VENDOR_PATH="/var/www/vendor"
 
       # DB name is derived from slug (underscores, prefixed with wp_)
       DB_NAME="wp_$(echo "$PROJECT_NAME" | tr '-' '_')"
       info "Database name: ${BOLD}${DB_NAME}${NC} (derived from project slug)"
+
+      # Check if a Docker volume already exists for this project
+      VOLUME_NAME="${PROJECT_NAME}_db_data"
+      if docker volume inspect "$VOLUME_NAME" &>/dev/null; then
+        warn "A database volume ${BOLD}${VOLUME_NAME}${NC} already exists for this project."
+        echo ""
+        echo "  1) Use existing database (keep data)"
+        echo "  2) Create a new project name"
+        echo "  3) Delete old database and start fresh"
+        echo ""
+        read -rp "$(echo -e "${BOLD}Choose${NC} [1]: ")" DB_CHOICE
+        DB_CHOICE="${DB_CHOICE:-1}"
+        case "$DB_CHOICE" in
+          2)
+            info "Re-run setup with a different project name."
+            exit 0
+            ;;
+          3)
+            info "Removing old volume ${VOLUME_NAME}..."
+            docker volume rm "$VOLUME_NAME" 2>/dev/null && success "Volume removed" || warn "Could not remove volume (containers may still be using it)"
+            ;;
+          *)
+            info "Reusing existing database"
+            ;;
+        esac
+      fi
+
+      # Find available ports (auto-increment like Vite)
+      find_free_port() {
+        local port=$1
+        while lsof -i :"$port" &>/dev/null; do
+          port=$((port + 1))
+        done
+        echo "$port"
+      }
+
+      WP_PORT=$(find_free_port 8080)
+      PMA_PORT=$(find_free_port $((WP_PORT + 1)))
+
+      if [ "$WP_PORT" != "8080" ]; then
+        warn "Port 8080 is busy, using ${BOLD}${WP_PORT}${NC} for WordPress"
+      fi
+      if [ "$PMA_PORT" != "8081" ]; then
+        warn "Port 8081 is busy, using ${BOLD}${PMA_PORT}${NC} for phpMyAdmin"
+      fi
+
+      WP_HOME="http://localhost:$WP_PORT"
 
       # DB user/password with smart defaults (user can override by typing)
       DB_PASSWORD_DEFAULT=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 16 2>/dev/null) || true
@@ -204,7 +250,7 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
       ask "Database password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD
       DB_HOST="db"
 
-      success "Environment: Docker"
+      success "Environment: Docker (WordPress: :${WP_PORT}, phpMyAdmin: :${PMA_PORT})"
       ;;
     2)
       # DevKinsta
