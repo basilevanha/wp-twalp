@@ -21,7 +21,7 @@
 ```
 wp-boilerplate/
 ├── bin/
-│   ├── setup.sh                 # CLI interactif de configuration (À FAIRE)
+│   ├── setup.sh                 # CLI interactif de configuration ✅
 │   └── sync.js                  # Script de copie src/ → thème WP ✅
 ├── database/                    # Dumps SQL optionnels ✅
 │   └── .gitkeep
@@ -158,26 +158,29 @@ wp-boilerplate/
 
 ---
 
-## CLI Setup (`bin/setup.sh`) — ⏳ À FAIRE (Phase 4)
+## CLI Setup (`bin/setup.sh`) — ✅ TERMINÉ
 
-Script interactif qui :
+Script interactif en 5 étapes :
 
-1. **Demande** : nom du projet, type d'environnement (DevKinsta / Docker / WP existant)
-2. **Si DevKinsta** : demande le chemin du site → configure `THEME_DIR` dans `.env`
-3. **Si Docker** : demande les credentials DB → lance `docker-compose up`
-4. **Si WP existant** : demande le chemin → configure `THEME_DIR`
-5. **Questions fonctionnelles** (ajout par rapport au plan initial) :
-   - "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require
-   - "As-tu besoin de [feature] ?" → ajoute/retire des fichiers du starter-theme
-6. **Nettoyage WP** (via WP-CLI) :
-    - Supprime Hello Dolly, Akismet
-    - Supprime les thèmes par défaut inutiles
-    - Supprime le contenu sample (post, page, commentaire)
-    - Configure les permalinks en `/%postname%/`
-7. **Installe** ACF et Timber via WP-CLI (ou invite à le faire manuellement)
-8. **Lance** `composer install` (Timber v2)
-9. **Sync** initial + crée le symlink `acf-json`
-10. **Active** le thème
+1. **Nom du projet** : demande un slug (sanitisé automatiquement : lowercase, tirets)
+2. **Environnement** : choix entre Docker / DevKinsta / WP existant
+   - Docker : demande credentials DB, configure `VENDOR_PATH=/var/www/vendor`, lance `docker compose up -d`
+   - DevKinsta : demande le chemin du site → configure `THEME_DIR` avec chemin absolu, `VENDOR_PATH` vide
+   - WP existant : demande le chemin WP → configure `THEME_DIR`, `VENDOR_PATH` vide
+3. **Features** : "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require dans `functions.php`
+4. **Configuration** : génère `.env`, met à jour `Theme Name` dans `style.css`
+5. **Setup** :
+   - `composer install` + `npm install`
+   - Docker : démarre les containers, attend que WP réponde
+   - `node bin/sync.js` (sync initial)
+   - WP-CLI (installé automatiquement dans le container Docker si absent) :
+     - Active le thème
+     - Supprime Hello Dolly, Akismet
+     - Supprime twentytwentythree/four/five
+     - Supprime sample post, page, commentaire
+     - Permalinks `/%postname%/`
+     - Timezone `Europe/Paris`
+   - Fallback : instructions manuelles si WP-CLI non disponible
 
 ---
 
@@ -282,13 +285,20 @@ npm-debug.log*
 - [x] `vite.php` : client HMR `@vite/client` pas injecté (add_action wp_head dans wp_enqueue_scripts = trop tard) → déplacé dans hook wp_head séparé
 - [x] `vite.config.js` : `base` fixe en dev causait 404 sur `@vite/client` → base conditionnel (`/` en dev, chemin complet en prod)
 
-### Phase 4 : CLI Setup ⏳ À FAIRE
+### Phase 4 : CLI Setup ✅ TERMINÉE
 
-- [ ] `bin/setup.sh` — script interactif
-- [ ] Support DevKinsta / Docker / WP existant
-- [ ] Questions fonctionnelles (ACF oui/non, features optionnelles)
-- [ ] Nettoyage WP via WP-CLI
-- [ ] Création symlink ACF (déjà géré par sync.js, le CLI l'appellera)
+- [x] `bin/setup.sh` — script interactif (nom du projet, slug auto-sanitisé)
+- [x] Support DevKinsta / Docker / WP existant (3 modes avec config adaptée)
+- [x] Questions fonctionnelles (ACF oui/non → supprime acf.php, acf-json/, require dans functions.php)
+- [x] Génération `.env` dynamique selon l'environnement choisi
+- [x] Mise à jour automatique du Theme Name dans style.css
+- [x] Installation dépendances (composer install + npm install)
+- [x] Démarrage Docker containers si mode Docker
+- [x] Sync initial via `node bin/sync.js`
+- [x] Nettoyage WP via WP-CLI (supprime Hello Dolly, Akismet, thèmes par défaut, sample content, permalinks /%postname%/)
+- [x] WP-CLI : installation auto dans le container Docker si absent
+- [x] Activation du thème via WP-CLI
+- [x] Fallback gracieux si WP-CLI/Docker/Composer/npm non disponibles
 
 ### Phase 5 : Docker ✅ TERMINÉE
 
