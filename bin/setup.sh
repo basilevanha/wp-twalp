@@ -5,6 +5,12 @@
 #
 # Usage: npm run setup (or bash bin/setup.sh)
 #
+# Features:
+#   - Pre-flight checks (node, npm, composer, Docker)
+#   - Saves answers to .setup-state for resume after failure
+#   - Idempotent operations (safe to re-run)
+#   - Replaces text domain in all theme files
+#
 
 set -euo pipefail
 
@@ -52,13 +58,59 @@ ask_yn() {
   esac
 }
 
+# Portable sed -i (macOS vs GNU)
+sedi() {
+  sed -i '' "$@" 2>/dev/null || sed -i "$@"
+}
+
 # ──────────────────────────────────────────────
 # Resolve paths
 # ──────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$ROOT_DIR/.env"
-ENV_EXAMPLE="$ROOT_DIR/.env.example"
+STATE_FILE="$ROOT_DIR/.setup-state"
+
+# ──────────────────────────────────────────────
+# Pre-flight checks
+# ──────────────────────────────────────────────
+preflight() {
+  local errors=0
+
+  if ! command -v node &>/dev/null; then
+    error "node is not installed (required for Vite and sync)"
+    errors=$((errors + 1))
+  fi
+
+  if ! command -v npm &>/dev/null; then
+    error "npm is not installed"
+    errors=$((errors + 1))
+  fi
+
+  if ! command -v composer &>/dev/null; then
+    warn "Composer not found — you will need to install dependencies manually"
+  fi
+
+  if [ "$errors" -gt 0 ]; then
+    error "Pre-flight checks failed. Please fix the issues above and re-run."
+    exit 1
+  fi
+}
+
+preflight
+
+# ──────────────────────────────────────────────
+# Error trap — keep state file on failure
+# ──────────────────────────────────────────────
+on_error() {
+  local exit_code=$?
+  if [ $exit_code -ne 0 ] && [ -f "$STATE_FILE" ]; then
+    echo ""
+    warn "Setup interrupted (exit code: $exit_code)."
+    info "Your answers have been saved. Re-run ${BOLD}npm run setup${NC} to resume."
+  fi
+}
+trap on_error EXIT
 
 # ──────────────────────────────────────────────
 # Welcome
@@ -70,114 +122,171 @@ echo -e "${BOLD}╚════════════════════�
 echo ""
 
 # ──────────────────────────────────────────────
-# 1. Project name
+# Resume from saved state?
 # ──────────────────────────────────────────────
-header "1/5 — Project"
+SKIP_QUESTIONS="n"
 
-ask "Project name (slug, used for theme folder)" "starter-theme" PROJECT_NAME
-
-# Sanitize: lowercase, replace spaces/underscores with dashes, strip non-alphanumeric
-PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
-success "Project slug: ${BOLD}$PROJECT_NAME${NC}"
-
-# ──────────────────────────────────────────────
-# 2. Environment type
-# ──────────────────────────────────────────────
-header "2/5 — Environment"
-
-echo "  1) Docker (included docker-compose, recommended)"
-echo "  2) DevKinsta (local site already created)"
-echo "  3) Existing WordPress installation"
-echo ""
-read -rp "$(echo -e "${BOLD}Choose your environment${NC} [1]: ")" ENV_CHOICE
-ENV_CHOICE="${ENV_CHOICE:-1}"
-
-THEME_DIR=""
-WP_HOME=""
-VENDOR_PATH=""
-DB_NAME="wordpress"
-DB_USER="wordpress"
-DB_PASSWORD="wordpress"
-DB_HOST="db"
-USE_DOCKER="n"
-
-case "$ENV_CHOICE" in
-  1)
-    # Docker
-    USE_DOCKER="y"
-    THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
-    WP_HOME="http://localhost:8080"
-    VENDOR_PATH="/var/www/vendor"
-
-    ask "Database name" "wordpress" DB_NAME
-    ask "Database user" "wordpress" DB_USER
-    ask "Database password" "wordpress" DB_PASSWORD
-    DB_HOST="db"
-
-    success "Environment: Docker"
-    ;;
-  2)
-    # DevKinsta
-    ask "Path to your DevKinsta site root (e.g. ~/DevKinsta/public/my-site)" "" DEVKINSTA_PATH
-
-    # Expand ~ to $HOME
-    DEVKINSTA_PATH="${DEVKINSTA_PATH/#\~/$HOME}"
-
-    if [ ! -d "$DEVKINSTA_PATH" ]; then
-      error "Directory not found: $DEVKINSTA_PATH"
-      exit 1
-    fi
-
-    THEME_DIR="$DEVKINSTA_PATH/wp-content/themes/$PROJECT_NAME"
-    VENDOR_PATH=""
-    DB_HOST="localhost"
-
-    # Try to detect WP_HOME from DevKinsta
-    ask "WordPress URL" "http://localhost" WP_HOME
-
-    success "Environment: DevKinsta → $THEME_DIR"
-    ;;
-  3)
-    # Existing WP
-    ask "Path to your WordPress installation (the folder with wp-content/)" "" WP_PATH
-    WP_PATH="${WP_PATH/#\~/$HOME}"
-
-    if [ ! -d "$WP_PATH/wp-content" ]; then
-      error "wp-content/ not found in: $WP_PATH"
-      exit 1
-    fi
-
-    THEME_DIR="$WP_PATH/wp-content/themes/$PROJECT_NAME"
-    VENDOR_PATH=""
-    DB_HOST="localhost"
-
-    ask "WordPress URL" "http://localhost" WP_HOME
-
-    success "Environment: Existing WP → $THEME_DIR"
-    ;;
-  *)
-    error "Invalid choice"
-    exit 1
-    ;;
-esac
-
-# ──────────────────────────────────────────────
-# 3. Functional options
-# ──────────────────────────────────────────────
-header "3/5 — Features"
-
-ask_yn "Do you use ACF (Advanced Custom Fields)?" "y" USE_ACF
-
-if [ "$USE_ACF" = "n" ]; then
-  info "ACF support will be removed from the theme."
+if [ -f "$STATE_FILE" ]; then
+  warn "A previous setup was interrupted."
+  # shellcheck disable=SC1090
+  source "$STATE_FILE"
+  echo ""
+  info "Saved answers:"
+  echo -e "    Project:     ${BOLD}$PROJECT_NAME${NC}"
+  echo -e "    Environment: ${BOLD}$ENV_CHOICE${NC} (1=Docker, 2=DevKinsta, 3=Existing WP)"
+  echo -e "    Theme dir:   ${BOLD}$THEME_DIR${NC}"
+  echo -e "    ACF:         ${BOLD}$USE_ACF${NC}"
+  echo ""
+  ask_yn "Resume with these answers?" "y" RESUME
+  if [ "$RESUME" = "y" ]; then
+    SKIP_QUESTIONS="y"
+    success "Resuming with saved answers"
+  else
+    rm "$STATE_FILE"
+    info "Starting fresh"
+  fi
 fi
 
 # ──────────────────────────────────────────────
-# 4. Write .env
+# Questions (skipped if resuming)
 # ──────────────────────────────────────────────
-header "4/5 — Configuration"
+if [ "$SKIP_QUESTIONS" != "y" ]; then
 
-cat > "$ENV_FILE" <<EOF
+  # ── 1. Project name ──
+  header "1/4 — Project"
+
+  ask "Project name (slug, used for theme folder and text domain)" "starter-theme" PROJECT_NAME
+
+  # Sanitize: lowercase, replace spaces/underscores with dashes, strip non-alphanumeric
+  PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
+  success "Project slug: ${BOLD}$PROJECT_NAME${NC}"
+
+  # ── 2. Environment type ──
+  header "2/4 — Environment"
+
+  echo "  1) Docker (included docker-compose, recommended)"
+  echo "  2) DevKinsta (local site already created)"
+  echo "  3) Existing WordPress installation"
+  echo ""
+  read -rp "$(echo -e "${BOLD}Choose your environment${NC} [1]: ")" ENV_CHOICE
+  ENV_CHOICE="${ENV_CHOICE:-1}"
+
+  THEME_DIR=""
+  WP_HOME=""
+  VENDOR_PATH=""
+  DB_NAME="wordpress"
+  DB_USER="wordpress"
+  DB_PASSWORD="wordpress"
+  DB_HOST="db"
+  USE_DOCKER="n"
+
+  case "$ENV_CHOICE" in
+    1)
+      # Check Docker before going further
+      if ! docker info &>/dev/null 2>&1; then
+        error "Docker daemon is not running. Please start Docker Desktop and re-run setup."
+        exit 1
+      fi
+
+      USE_DOCKER="y"
+      THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
+      WP_HOME="http://localhost:8080"
+      VENDOR_PATH="/var/www/vendor"
+
+      ask "Database name" "wordpress" DB_NAME
+      ask "Database user" "wordpress" DB_USER
+      ask "Database password" "wordpress" DB_PASSWORD
+      DB_HOST="db"
+
+      success "Environment: Docker"
+      ;;
+    2)
+      # DevKinsta
+      ask "Path to your DevKinsta site root (e.g. ~/DevKinsta/public/my-site)" "" DEVKINSTA_PATH
+
+      # Expand ~ to $HOME
+      DEVKINSTA_PATH="${DEVKINSTA_PATH/#\~/$HOME}"
+
+      if [ ! -d "$DEVKINSTA_PATH" ]; then
+        error "Directory not found: $DEVKINSTA_PATH"
+        exit 1
+      fi
+
+      THEME_DIR="$DEVKINSTA_PATH/wp-content/themes/$PROJECT_NAME"
+      VENDOR_PATH=""
+      DB_HOST="localhost"
+      USE_DOCKER="n"
+      WP_HOME=""
+
+      ask "WordPress URL" "http://localhost" WP_HOME
+
+      success "Environment: DevKinsta → $THEME_DIR"
+      ;;
+    3)
+      # Existing WP
+      ask "Path to your WordPress installation (the folder with wp-content/)" "" WP_PATH
+      WP_PATH="${WP_PATH/#\~/$HOME}"
+
+      if [ ! -d "$WP_PATH/wp-content" ]; then
+        error "wp-content/ not found in: $WP_PATH"
+        exit 1
+      fi
+
+      THEME_DIR="$WP_PATH/wp-content/themes/$PROJECT_NAME"
+      VENDOR_PATH=""
+      DB_HOST="localhost"
+      USE_DOCKER="n"
+      WP_HOME=""
+
+      ask "WordPress URL" "http://localhost" WP_HOME
+
+      success "Environment: Existing WP → $THEME_DIR"
+      ;;
+    *)
+      error "Invalid choice"
+      exit 1
+      ;;
+  esac
+
+  # ── 3. Functional options ──
+  header "3/4 — Features"
+
+  ask_yn "Do you use ACF (Advanced Custom Fields)?" "y" USE_ACF
+
+  if [ "$USE_ACF" = "n" ]; then
+    info "ACF support will be removed from the theme."
+  fi
+
+  # ── Save state for resume ──
+  cat > "$STATE_FILE" <<EOF
+PROJECT_NAME="$PROJECT_NAME"
+ENV_CHOICE="$ENV_CHOICE"
+USE_DOCKER="$USE_DOCKER"
+THEME_DIR="$THEME_DIR"
+WP_HOME="$WP_HOME"
+VENDOR_PATH="$VENDOR_PATH"
+DB_NAME="$DB_NAME"
+DB_USER="$DB_USER"
+DB_PASSWORD="$DB_PASSWORD"
+DB_HOST="$DB_HOST"
+USE_ACF="$USE_ACF"
+EOF
+
+fi # end SKIP_QUESTIONS
+
+# ──────────────────────────────────────────────
+# 4. Configuration
+# ──────────────────────────────────────────────
+header "4/4 — Configuration & Setup"
+
+# ── Write .env (with confirmation if exists) ──
+WRITE_ENV="y"
+if [ -f "$ENV_FILE" ]; then
+  ask_yn ".env already exists. Overwrite?" "y" WRITE_ENV
+fi
+
+if [ "$WRITE_ENV" = "y" ]; then
+  cat > "$ENV_FILE" <<EOF
 # Project
 PROJECT_NAME=$PROJECT_NAME
 THEME_DIR=$THEME_DIR
@@ -198,117 +307,118 @@ VENDOR_PATH=$VENDOR_PATH
 # Vite
 VITE_DEV_SERVER=http://localhost:5173
 EOF
-
-success "Generated .env"
-
-# ──────────────────────────────────────────────
-# 4b. Update theme metadata (style.css)
-# ──────────────────────────────────────────────
-STYLE_CSS="$ROOT_DIR/src/theme/style.css"
-if [ -f "$STYLE_CSS" ]; then
-  # Replace theme name in style.css
-  sed -i '' "s/Theme Name: .*/Theme Name: $PROJECT_NAME/" "$STYLE_CSS" 2>/dev/null || \
-  sed -i "s/Theme Name: .*/Theme Name: $PROJECT_NAME/" "$STYLE_CSS"
-  success "Updated theme name in style.css"
+  success "Generated .env"
+else
+  info "Keeping existing .env"
 fi
 
-# ──────────────────────────────────────────────
-# 4c. Remove ACF if not needed
-# ──────────────────────────────────────────────
+# ── Update theme metadata (style.css) ──
+STYLE_CSS="$ROOT_DIR/src/theme/style.css"
+if [ -f "$STYLE_CSS" ]; then
+  sedi "s/Theme Name: .*/Theme Name: $PROJECT_NAME/" "$STYLE_CSS"
+  sedi "s/Text Domain: .*/Text Domain: $PROJECT_NAME/" "$STYLE_CSS"
+  success "Updated theme name and text domain in style.css"
+fi
+
+# ── Replace text domain in all PHP and Twig files ──
+if [ "$PROJECT_NAME" != "starter-theme" ]; then
+  info "Replacing text domain 'starter-theme' → '$PROJECT_NAME'..."
+  find "$ROOT_DIR/src/theme" -name "*.php" -exec \
+    sed -i '' "s/'starter-theme'/'$PROJECT_NAME'/g" {} + 2>/dev/null || \
+  find "$ROOT_DIR/src/theme" -name "*.php" -exec \
+    sed -i "s/'starter-theme'/'$PROJECT_NAME'/g" {} +
+
+  find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
+    sed -i '' "s/'starter-theme'/'$PROJECT_NAME'/g" {} + 2>/dev/null || \
+  find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
+    sed -i "s/'starter-theme'/'$PROJECT_NAME'/g" {} +
+
+  success "Text domain updated to '$PROJECT_NAME'"
+fi
+
+# ── Remove ACF if not needed ──
 if [ "$USE_ACF" = "n" ]; then
-  # Remove acf.php include from functions.php
   FUNCTIONS_PHP="$ROOT_DIR/src/theme/functions.php"
-  if [ -f "$FUNCTIONS_PHP" ]; then
-    sed -i '' "/require_once.*inc\/acf\.php/d" "$FUNCTIONS_PHP" 2>/dev/null || \
-    sed -i "/require_once.*inc\/acf\.php/d" "$FUNCTIONS_PHP"
+  if [ -f "$FUNCTIONS_PHP" ] && grep -q "inc/acf.php" "$FUNCTIONS_PHP"; then
+    sedi "/require_once.*inc\/acf\.php/d" "$FUNCTIONS_PHP"
     success "Removed ACF require from functions.php"
   fi
 
-  # Remove acf.php
   if [ -f "$ROOT_DIR/src/theme/inc/acf.php" ]; then
     rm "$ROOT_DIR/src/theme/inc/acf.php"
     success "Removed inc/acf.php"
   fi
 
-  # Remove acf-json directory
   if [ -d "$ROOT_DIR/src/acf-json" ]; then
     rm -rf "$ROOT_DIR/src/acf-json"
     success "Removed src/acf-json/"
   fi
 
-  info "ACF support removed. You can always add it back manually."
+  info "ACF support removed."
 fi
 
-# ──────────────────────────────────────────────
-# 5. Install dependencies
-# ──────────────────────────────────────────────
-header "5/5 — Dependencies & Setup"
-
-# Composer
+# ── Install dependencies ──
 if command -v composer &>/dev/null; then
   info "Installing Composer dependencies (Timber)..."
   (cd "$ROOT_DIR" && composer install --no-interaction --quiet)
   success "Composer dependencies installed"
 else
-  warn "Composer not found. Please install it and run: composer install"
+  warn "Composer not found. Run manually: composer install"
 fi
 
-# npm
 if command -v npm &>/dev/null; then
   info "Installing npm dependencies (Vite, etc.)..."
   (cd "$ROOT_DIR" && npm install --silent 2>/dev/null)
   success "npm dependencies installed"
 else
-  warn "npm not found. Please install Node.js and run: npm install"
+  warn "npm not found. Run manually: npm install"
 fi
 
-# ──────────────────────────────────────────────
-# 5b. Docker — start containers
-# ──────────────────────────────────────────────
+# ── Docker — start containers ──
 if [ "$USE_DOCKER" = "y" ]; then
-  if command -v docker &>/dev/null; then
+  # Check again in case Docker was stopped between questions and now
+  if ! docker info &>/dev/null 2>&1; then
+    error "Docker daemon is not running. Please start Docker Desktop and re-run setup."
+    exit 1
+  fi
+
+  # Check if containers are already running
+  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" ps --status running 2>/dev/null | grep -q "wordpress"; then
+    success "Docker containers already running"
+  else
     info "Starting Docker containers..."
     (cd "$ROOT_DIR/docker" && docker compose up -d)
     success "Docker containers started"
+  fi
 
-    info "Waiting for WordPress to be ready..."
-    MAX_WAIT=60
-    ELAPSED=0
-    while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080" | grep -q "200\|302"; do
-      sleep 2
-      ELAPSED=$((ELAPSED + 2))
-      if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-        warn "WordPress not responding yet. It may still be starting up."
-        break
-      fi
-    done
-    if [ "$ELAPSED" -lt "$MAX_WAIT" ]; then
-      success "WordPress is running"
+  info "Waiting for WordPress to be ready..."
+  MAX_WAIT=60
+  ELAPSED=0
+  while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080" | grep -q "200\|302"; do
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+    if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+      warn "WordPress not responding yet. It may still be starting up."
+      break
     fi
-  else
-    warn "Docker not found. Please install Docker and run: cd docker && docker compose up -d"
+  done
+  if [ "$ELAPSED" -lt "$MAX_WAIT" ]; then
+    success "WordPress is running"
   fi
 fi
 
-# ──────────────────────────────────────────────
-# 5c. Initial sync
-# ──────────────────────────────────────────────
+# ── Initial sync ──
 info "Running initial file sync..."
 (cd "$ROOT_DIR" && node bin/sync.js)
 success "Files synced to theme directory"
 
-# ──────────────────────────────────────────────
-# 5d. WordPress cleanup & theme activation (WP-CLI)
-# ──────────────────────────────────────────────
+# ── WordPress cleanup & theme activation (WP-CLI) ──
 WP_CLI=""
 
 if [ "$USE_DOCKER" = "y" ]; then
-  # Use WP-CLI inside the Docker container
-  # Check if wp-cli is available in the container
   if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T wordpress wp --info &>/dev/null 2>&1; then
     WP_CLI="docker compose -f $ROOT_DIR/docker/docker-compose.yml exec -T wordpress wp --allow-root"
   else
-    # Install WP-CLI in the container
     info "Installing WP-CLI in Docker container..."
     docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T wordpress bash -c \
       "curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp" 2>/dev/null && \
@@ -320,7 +430,11 @@ elif command -v wp &>/dev/null; then
 fi
 
 if [ -n "$WP_CLI" ]; then
-  info "Cleaning up WordPress defaults..."
+  info "Configuring WordPress..."
+
+  # Set site title
+  $WP_CLI option update blogname "$PROJECT_NAME" 2>/dev/null && \
+    success "Site title set to '$PROJECT_NAME'" || true
 
   # Activate our theme
   $WP_CLI theme activate "$PROJECT_NAME" 2>/dev/null && \
@@ -356,6 +470,11 @@ else
   info "  → Activate theme: $PROJECT_NAME"
   info "  → Set permalinks to /%postname%/"
 fi
+
+# ──────────────────────────────────────────────
+# Cleanup state file — setup succeeded
+# ──────────────────────────────────────────────
+rm -f "$STATE_FILE"
 
 # ──────────────────────────────────────────────
 # Done!
