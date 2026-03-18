@@ -130,18 +130,22 @@ wp-boilerplate/
 > `dev.js` orchestre les deux processus enfants, affiche un banner clair avec les URLs,
 > et tue proprement les deux processus sur Ctrl+C (plus de sync.js orphelin).
 
-1. `bin/dev.js` lance `sync.js --watch` + `vite` comme child processes
-2. `sync.js` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR` puis surveille les changements
-3. Vite dev server démarre sur `localhost:5173`
-4. `dev.js` détecte le "ready" de Vite et affiche un banner avec :
+1. `bin/dev.js` vérifie que `.env` existe (sinon erreur "Run npm run setup first")
+2. Si projet Docker : vérifie si les containers tournent, les démarre automatiquement si besoin
+3. Lance `sync.js --watch` + `vite` comme child processes
+4. `sync.js` copie `src/theme/`, `src/templates/`, `src/acf-json/` → `THEME_DIR` puis surveille les changements
+5. Vite dev server démarre sur `localhost:5173` (ou port suivant si occupé, `strictPort: false`)
+6. `dev.js` détecte le port réel de Vite depuis stdout et réécrit `dist/hot` avec la bonne URL
+7. `dev.js` affiche un banner avec :
    - WordPress : `http://localhost:{WP_PORT}` (le bon lien à ouvrir)
-   - Vite HMR : `http://localhost:5173` (pour info)
+   - Vite HMR : `http://localhost:{VITE_PORT}` (port réel, peut être 5174+ si 5173 occupé)
    - phpMyAdmin : `http://localhost:{PMA_PORT}`
+   - Note jaune si port Vite != 5173
    - Instructions : "Ctrl+C pour arrêter. Docker continue en arrière-plan."
-5. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
-6. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
-7. Sur Ctrl+C ou fermeture VS Code : `dev.js` tue sync + vite proprement (pas d'orphelins)
-8. `npm run stop` arrête les containers Docker du projet
+8. `vite-plugin-live-reload` détecte les changements dans `THEME_DIR` → full reload navigateur
+9. Pour SCSS/JS, Vite fait du vrai HMR (injection CSS sans reload)
+10. Sur Ctrl+C ou fermeture VS Code : `dev.js` tue sync + vite proprement, supprime `dist/hot` (pas d'orphelins)
+11. `npm run stop` arrête les containers Docker du projet
 
 ### Mode production (`npm run build`) ✅
 
@@ -374,6 +378,17 @@ npm-debug.log*
 - [x] `COMPOSE_PROJECT_NAME` pour scoper containers/volumes/réseaux par projet
 - [x] Deux projets peuvent tourner en parallèle sur des ports différents
 
+### Phase 7b : DX — Port Vite dynamique + Docker auto-start ✅ TERMINÉE
+
+- [x] `vite.config.js` : `strictPort: false` + suppression `origin` hardcodé — Vite cherche un port libre si 5173 occupé
+- [x] `dev.js` : détecte le port réel de Vite depuis stdout (regex sur "Local: http://localhost:XXXX")
+- [x] `dev.js` : réécrit `dist/hot` avec le port réel → `vite.php` lit la bonne URL automatiquement
+- [x] `dev.js` : supprime `dist/hot` au cleanup (Ctrl+C) → PHP retombe en mode prod
+- [x] `dev.js` : banner affiche le port Vite réel + message jaune si port fallback
+- [x] `dev.js` : vérifie que `.env` existe → sinon erreur "Run npm run setup first"
+- [x] `dev.js` : si projet Docker, vérifie si containers tournent → les démarre automatiquement si down
+- [x] `dev.js` : attend que WordPress soit ready avant de lancer sync + Vite
+
 ---
 
 ## Vérification / Test
@@ -388,11 +403,14 @@ npm-debug.log*
 8. ✅ **Nettoyage contenu :** plus de foo/bar, footer avec site.name, titre WP = PROJECT_NAME
 9. ✅ **i18n :** toutes les chaînes wrappées avec `__()`, text domain remplacé par le slug du projet
 10. ✅ **Banner dev :** `npm run dev` → affiche les bons URLs (WordPress `:8080`, pas Vite `:5173`)
-11. ✅ **Cleanup dev :** Ctrl+C → sync + vite tués proprement, aucun orphelin
+11. ✅ **Cleanup dev :** Ctrl+C → sync + vite tués proprement, aucun orphelin, `dist/hot` supprimé
 12. ✅ **npm run stop :** arrête les containers Docker
 13. ✅ **Docker scoping :** containers/volumes préfixés par le nom du projet, pas de conflit multi-projets
-14. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
-15. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
+14. ✅ **Port Vite fallback :** port 5173 occupé → Vite prend 5174, banner affiche le bon port, `dist/hot` mis à jour
+15. ✅ **Docker auto-start :** `npm run dev` avec Docker down → démarre automatiquement les containers, attend WP
+16. ✅ **Pas de .env :** `npm run dev` sans `.env` → erreur claire "Run npm run setup first"
+17. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
+18. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
 
 ---
 
@@ -423,3 +441,6 @@ npm-debug.log*
 14. **Orchestrateur dev** : `bin/dev.js` remplace `sync.js --watch & vite` — banner clair, cleanup propre, plus d'orphelins
 15. **Docker scopé** : `COMPOSE_PROJECT_NAME`, ports dynamiques (`WP_PORT`, `PMA_PORT`) — multi-projets sans conflit
 16. **npm run stop** : commande dédiée pour arrêter les containers Docker du projet
+17. **Port Vite dynamique** : `strictPort: false` dans vite.config.js, `dev.js` détecte le port réel depuis stdout de Vite et réécrit `dist/hot` — plus de crash si le port 5173 est occupé
+18. **Docker auto-start** : `dev.js` vérifie `.env`, démarre les containers Docker automatiquement si down, attend que WordPress soit ready
+19. **Cleanup dist/hot** : `dev.js` supprime `dist/hot` au Ctrl+C pour que PHP retombe en mode production
