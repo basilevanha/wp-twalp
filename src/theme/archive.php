@@ -14,13 +14,13 @@ use Timber\Timber;
 
 $templates = [ 'templates/archive.twig', 'templates/index.twig' ];
 
-$title = 'Archive';
+$title = __( 'Archive', 'starter-theme' );
 if ( is_day() ) {
-	$title = 'Archive: ' . get_the_date( 'D M Y' );
+	$title = __( 'Archive:', 'starter-theme' ) . ' ' . get_the_date( 'D M Y' );
 } elseif ( is_month() ) {
-	$title = 'Archive: ' . get_the_date( 'M Y' );
+	$title = __( 'Archive:', 'starter-theme' ) . ' ' . get_the_date( 'M Y' );
 } elseif ( is_year() ) {
-	$title = 'Archive: ' . get_the_date( 'Y' );
+	$title = __( 'Archive:', 'starter-theme' ) . ' ' . get_the_date( 'Y' );
 } elseif ( is_tag() ) {
 	$title = single_tag_title( '', false );
 } elseif ( is_category() ) {

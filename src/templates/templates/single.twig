@@ -7,7 +7,7 @@
             <section class="article-content">
                 <h1 class="article-h1">{{ post.title }}</h1>
                 <p class="blog-author">
-                    <span>By</span>
+                    <span>{{ __('By', 'starter-theme') }}</span>
                     <a href="{{ post.author.path }}">{{ post.author.name }}</a>
                     <span>&bull;</span>
                     <time datetime="{{ post.date|date('Y-m-d H:i:s') }}">{{ post.date }}</time>
@@ -17,7 +17,7 @@
             <section class="comment-box">
                 <div class="comments">
                     {% if post.comments %}
-                        <h3>comments</h3>
+                        <h3>{{ __('Comments', 'starter-theme') }}</h3>
                         {% for cmt in post.comments %}
                             {% include 'partials/comment.twig' with {
                                 comment: cmt
@@ -27,7 +27,7 @@
                 </div>
 
                 {% if post.comment_status == 'closed' %}
-                    <p>comments for this post are closed</p>
+                    <p>{{ __('Comments for this post are closed', 'starter-theme') }}</p>
                 {% else %}
                     {% include 'partials/comment-form.twig' %}
                 {% endif %}

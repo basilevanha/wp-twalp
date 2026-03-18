@@ -11,7 +11,7 @@ $templates = [ 'templates/search.twig', 'templates/archive.twig', 'templates/ind
 
 $context = Timber::context(
 	[
-		'title' => 'Search results for ' . get_search_query(),
+		'title' => __( 'Search results for', 'starter-theme' ) . ' ' . get_search_query(),
 	]
 );
 

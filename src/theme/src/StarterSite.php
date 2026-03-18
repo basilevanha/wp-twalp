@@ -9,8 +9,6 @@ namespace App;
 
 use Timber\Site;
 use Timber\Timber;
-use Twig\Environment;
-use Twig\TwigFilter;
 
 /**
  * Class StarterSite.
@@ -52,11 +50,8 @@ class StarterSite extends Site {
 	 * @param array $context context['this'] Being the Twig's {{ this }}
 	 */
 	public function add_to_context( $context ) {
-		$context['foo']   = 'bar';
-		$context['stuff'] = 'I am a value set in your functions.php file';
-		$context['notes'] = 'These values are available everytime you call Timber::context();';
-		$context['menu']  = Timber::get_menu( 'primary_navigation' );
-		$context['site']  = $this;
+		$context['menu'] = Timber::get_menu( 'primary_navigation' );
+		$context['site'] = $this;
 
 		return $context;
 	}
@@ -68,7 +63,7 @@ class StarterSite extends Site {
 		// Register navigation menus
 		register_nav_menus(
 			[
-				'primary_navigation' => _x( 'Main menu', 'Backend - menu name', 'timber-starter' ),
+				'primary_navigation' => _x( 'Main menu', 'Backend - menu name', 'starter-theme' ),
 			]
 		);
 
@@ -126,31 +121,13 @@ class StarterSite extends Site {
 	}
 
 	/**
-	 * This would return 'foo bar!'.
-	 *
-	 * @param string $text being 'foo', then returned 'foo bar!'
-	 */
-	public function myfoo( $text ) {
-		$text .= ' bar!';
-
-		return $text;
-	}
-
-	/**
-	 * This is where you can add your own functions to twig.
+	 * This is where you can add your own filters to twig.
 	 *
 	 * @link https://timber.github.io/docs/v2/hooks/filters/#timber/twig/filters
 	 * @param array $filters an array of Twig filters.
 	 */
 	public function add_filters_to_twig( $filters ) {
-
-		$additional_filters = [
-			'myfoo' => [
-				'callable' => [ $this, 'myfoo' ],
-			],
-		];
-
-		return array_merge( $filters, $additional_filters );
+		return $filters;
 	}
 
 

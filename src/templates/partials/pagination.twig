@@ -4,17 +4,17 @@
             {# First #}
             {% if (posts.pagination.pages|first) and posts.pagination.pages|first.current != true %}
                 <li class="first btn">
-                    <a href="{{ posts.pagination.pages|first.link }}">First</a>
+                    <a href="{{ posts.pagination.pages|first.link }}">{{ __('First', 'starter-theme') }}</a>
                 </li>
             {% else %}
-                <li class="first btn disabled"><button disabled>First</button></li>
+                <li class="first btn disabled"><button disabled>{{ __('First', 'starter-theme') }}</button></li>
             {% endif %}
 
             {# Previous #}
             {% if posts.pagination.prev %}
-                <li class="prev btn"><a href="{{ posts.pagination.prev.link }}">Previous</a></li>
+                <li class="prev btn"><a href="{{ posts.pagination.prev.link }}">{{ __('Previous', 'starter-theme') }}</a></li>
             {% else %}
-                <li class="prev btn disabled"><button disabled>Previous</button></li>
+                <li class="prev btn disabled"><button disabled>{{ __('Previous', 'starter-theme') }}</button></li>
             {% endif %}
 
             {# Pages #}
@@ -28,16 +28,16 @@
 
             {# Next #}
             {% if posts.pagination.next %}
-                <li class="next btn"><a href="{{ posts.pagination.next.link }}">Next</a></li>
+                <li class="next btn"><a href="{{ posts.pagination.next.link }}">{{ __('Next', 'starter-theme') }}</a></li>
             {% else %}
-                <li class="next btn disabled"><button disabled>Next</button></li>
+                <li class="next btn disabled"><button disabled>{{ __('Next', 'starter-theme') }}</button></li>
             {% endif %}
 
             {# Last #}
             {% if (posts.pagination.pages|last) and posts.pagination.pages|last.current != true %}
-                <li class="last btn"><a href="{{ posts.pagination.pages|last.link }}">Last</a></li>
+                <li class="last btn"><a href="{{ posts.pagination.pages|last.link }}">{{ __('Last', 'starter-theme') }}</a></li>
             {% else %}
-                <li class="last btn disabled"><button disabled>Last</button></li>
+                <li class="last btn disabled"><button disabled>{{ __('Last', 'starter-theme') }}</button></li>
             {% endif %}
         </ul>
     </nav>
