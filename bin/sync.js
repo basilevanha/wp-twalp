@@ -69,27 +69,25 @@ function setupAcfJsonSymlink() {
 
   // Check if symlink already exists and points to the right place
   try {
-    if (lstatSync(link).isSymbolicLink()) {
+    const stat = lstatSync(link);
+    if (stat.isSymbolicLink()) {
       if (readlinkSync(link) === target) {
         console.log('[sync] acf-json symlink OK');
         return;
       }
+      // Symlink exists but points elsewhere — remove it
+      unlinkSync(link);
+    } else {
+      // It's a real directory (e.g. from copying the project) — backup then remove
+      try {
+        cpSync(link, target, { recursive: true });
+      } catch {
+        // Nothing to backup
+      }
+      rmSync(link, { recursive: true, force: true });
     }
   } catch {
     // Link doesn't exist, create it
-  }
-
-  // Remove existing directory/file if it's not a symlink
-  try {
-    cpSync(link, target, { recursive: true }); // backup any existing files
-  } catch {
-    // Nothing to backup
-  }
-
-  try {
-    rmSync(link, { recursive: true, force: true });
-  } catch {
-    // Nothing to remove
   }
 
   symlinkSync(target, link, 'dir');

@@ -8,7 +8,8 @@
     "build": "node bin/sync.js --production && vite build",
     "sync": "node bin/sync.js",
     "setup": "bash bin/setup.sh",
-    "stop": "docker compose -f docker/docker-compose.yml --env-file .env down"
+    "stop": "docker compose -f docker/docker-compose.yml --env-file .env down",
+    "reset": "docker compose -f docker/docker-compose.yml --env-file .env down -v 2>/dev/null; rm -rf public .env .setup-state node_modules vendor && echo '✔ Project reset. Run npm run setup to start fresh.'"
   },
   "devDependencies": {
     "chokidar": "^4.0.0",

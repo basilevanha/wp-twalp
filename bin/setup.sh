@@ -193,9 +193,15 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
       WP_HOME="http://localhost:8080"
       VENDOR_PATH="/var/www/vendor"
 
-      ask "Database name" "wordpress" DB_NAME
-      ask "Database user" "wordpress" DB_USER
-      ask "Database password" "wordpress" DB_PASSWORD
+      # DB name is derived from slug (underscores, prefixed with wp_)
+      DB_NAME="wp_$(echo "$PROJECT_NAME" | tr '-' '_')"
+      info "Database name: ${BOLD}${DB_NAME}${NC} (derived from project slug)"
+
+      # DB user/password with smart defaults (user can override by typing)
+      DB_PASSWORD_DEFAULT=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 16 2>/dev/null) || true
+      [ -z "$DB_PASSWORD_DEFAULT" ] && DB_PASSWORD_DEFAULT="wp_$(date +%s)"
+      ask "Database user" "$DB_NAME" DB_USER
+      ask "Database password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD
       DB_HOST="db"
 
       success "Environment: Docker"
@@ -507,6 +513,7 @@ echo -e "  ${BOLD}Commands:${NC}"
 echo -e "    ${CYAN}npm run dev${NC}    Start development (Vite + file sync)"
 echo -e "    ${CYAN}npm run build${NC}  Build for production"
 echo -e "    ${CYAN}npm run stop${NC}   Stop Docker containers"
+echo -e "    ${CYAN}npm run reset${NC}  Clean everything (Docker volumes + public/ + .env)"
 echo ""
 
 # ── Optionally launch dev server ──
