@@ -133,6 +133,7 @@ if [ -f "$STATE_FILE" ]; then
   echo ""
   info "Saved answers:"
   echo -e "    Project:     ${BOLD}$PROJECT_NAME${NC}"
+  echo -e "    Admin:       ${BOLD}$WP_ADMIN_USER${NC} / ${BOLD}$WP_ADMIN_PASSWORD${NC}"
   echo -e "    Environment: ${BOLD}$ENV_CHOICE${NC} (1=Docker, 2=DevKinsta, 3=Existing WP)"
   echo -e "    Theme dir:   ${BOLD}$THEME_DIR${NC}"
   echo -e "    ACF:         ${BOLD}$USE_ACF${NC}"
@@ -152,7 +153,7 @@ fi
 # ──────────────────────────────────────────────
 if [ "$SKIP_QUESTIONS" != "y" ]; then
 
-  # ── 1. Project name ──
+  # ── 1. Project & WordPress admin ──
   header "1/4 — Project"
 
   ask "Project name (slug, used for theme folder and text domain)" "starter-theme" PROJECT_NAME
@@ -160,6 +161,12 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # Sanitize: lowercase, replace spaces/underscores with dashes, strip non-alphanumeric
   PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
   success "Project slug: ${BOLD}$PROJECT_NAME${NC}"
+
+  echo ""
+  ask "WordPress admin username" "admin" WP_ADMIN_USER
+  ask "WordPress admin password" "admin" WP_ADMIN_PASSWORD
+  ask "WordPress admin email" "admin@example.com" WP_ADMIN_EMAIL
+  ask "WordPress language (e.g. fr_FR, en_US, nl_NL)" "fr_FR" WP_LOCALE
 
   # ── 2. Environment type ──
   header "2/4 — Environment"
@@ -324,6 +331,10 @@ DB_USER="$DB_USER"
 DB_PASSWORD="$DB_PASSWORD"
 DB_HOST="$DB_HOST"
 USE_ACF="$USE_ACF"
+WP_ADMIN_USER="$WP_ADMIN_USER"
+WP_ADMIN_PASSWORD="$WP_ADMIN_PASSWORD"
+WP_ADMIN_EMAIL="$WP_ADMIN_EMAIL"
+WP_LOCALE="$WP_LOCALE"
 EOF
 
 fi # end SKIP_QUESTIONS
@@ -475,54 +486,79 @@ info "Running initial file sync..."
 success "Files synced to theme directory"
 
 # ── WordPress cleanup & theme activation (WP-CLI) ──
-WP_CLI=""
+HAS_WP_CLI="n"
+DOCKER_COMPOSE_CMD="docker compose -f $ROOT_DIR/docker/docker-compose.yml --env-file $ENV_FILE"
+
+# Wrapper function for WP-CLI (avoids quoting issues with variable-as-command)
+run_wp() {
+  if [ "$USE_DOCKER" = "y" ]; then
+    $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
+  else
+    wp --path="$(echo "$THEME_DIR" | sed 's|/wp-content/themes/.*||')" "$@"
+  fi
+}
 
 if [ "$USE_DOCKER" = "y" ]; then
-  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" exec -T wordpress wp --info &>/dev/null 2>&1; then
-    WP_CLI="docker compose -f $ROOT_DIR/docker/docker-compose.yml exec -T wordpress wp --allow-root"
+  if $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root --info &>/dev/null 2>&1; then
+    HAS_WP_CLI="y"
   else
     info "Installing WP-CLI in Docker container..."
-    docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" exec -T wordpress bash -c \
+    $DOCKER_COMPOSE_CMD exec -T wordpress bash -c \
       "curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp" 2>/dev/null && \
-    WP_CLI="docker compose -f $ROOT_DIR/docker/docker-compose.yml exec -T wordpress wp --allow-root" || \
+    HAS_WP_CLI="y" || \
     warn "Could not install WP-CLI in Docker container."
   fi
 elif command -v wp &>/dev/null; then
-  WP_CLI="wp --path=$(echo "$THEME_DIR" | sed 's|/wp-content/themes/.*||')"
+  HAS_WP_CLI="y"
 fi
 
-if [ -n "$WP_CLI" ]; then
+if [ "$HAS_WP_CLI" = "y" ]; then
   info "Configuring WordPress..."
 
-  # Set site title
-  $WP_CLI option update blogname "$PROJECT_NAME" 2>/dev/null && \
-    success "Site title set to '$PROJECT_NAME'" || true
+  # Install WordPress if not already installed (fresh DB = install screen)
+  if ! run_wp core is-installed 2>/dev/null; then
+    info "Installing WordPress..."
+    run_wp core install \
+      --url="http://localhost:$WP_PORT" \
+      --title="$PROJECT_NAME" \
+      --admin_user="$WP_ADMIN_USER" \
+      --admin_password="$WP_ADMIN_PASSWORD" \
+      --admin_email="$WP_ADMIN_EMAIL" \
+      --locale="$WP_LOCALE" \
+      --skip-email 2>/dev/null && \
+      success "WordPress installed (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})" || \
+      warn "Could not install WordPress automatically"
+  else
+    # WP already installed — just update the title
+    run_wp option update blogname "$PROJECT_NAME" 2>/dev/null && \
+      success "Site title set to '$PROJECT_NAME'" || true
+  fi
 
   # Activate our theme
-  $WP_CLI theme activate "$PROJECT_NAME" 2>/dev/null && \
+  run_wp theme activate "$PROJECT_NAME" 2>/dev/null && \
     success "Theme '$PROJECT_NAME' activated" || \
-    warn "Could not activate theme (WordPress may not be fully installed yet)"
+    warn "Could not activate theme"
 
   # Delete default plugins
-  $WP_CLI plugin delete hello 2>/dev/null && success "Removed Hello Dolly" || true
-  $WP_CLI plugin delete akismet 2>/dev/null && success "Removed Akismet" || true
+  run_wp plugin delete hello 2>/dev/null && success "Removed Hello Dolly" || true
+  run_wp plugin delete akismet 2>/dev/null && success "Removed Akismet" || true
 
   # Delete default themes (keep ours)
   for theme in twentytwentythree twentytwentyfour twentytwentyfive; do
-    $WP_CLI theme delete "$theme" 2>/dev/null && success "Removed $theme" || true
+    run_wp theme delete "$theme" 2>/dev/null && success "Removed $theme" || true
   done
 
   # Delete sample content
-  $WP_CLI post delete 1 --force 2>/dev/null && success "Removed sample post" || true
-  $WP_CLI post delete 2 --force 2>/dev/null && success "Removed sample page" || true
-  $WP_CLI comment delete 1 --force 2>/dev/null && success "Removed sample comment" || true
+  run_wp post delete 1 --force 2>/dev/null && success "Removed sample post" || true
+  run_wp post delete 2 --force 2>/dev/null && success "Removed sample page" || true
+  run_wp comment delete 1 --force 2>/dev/null && success "Removed sample comment" || true
 
   # Set pretty permalinks
-  $WP_CLI rewrite structure '/%postname%/' 2>/dev/null && \
+  run_wp rewrite structure '/%postname%/' 2>/dev/null && \
     success "Permalinks set to /%postname%/" || true
 
   # Set timezone
-  $WP_CLI option update timezone_string "Europe/Paris" 2>/dev/null && \
+  run_wp option update timezone_string "Europe/Paris" 2>/dev/null && \
     success "Timezone set to Europe/Paris" || true
 
 else
@@ -550,6 +586,7 @@ echo -e "  ${BOLD}Theme:${NC}       $PROJECT_NAME"
 echo -e "  ${BOLD}Theme dir:${NC}   $THEME_DIR"
 if [ "$USE_DOCKER" = "y" ]; then
 echo -e "  ${BOLD}WordPress:${NC}   http://localhost:$WP_PORT"
+echo -e "  ${BOLD}Admin:${NC}       http://localhost:$WP_PORT/wp-admin  (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})"
 echo -e "  ${BOLD}phpMyAdmin:${NC}  http://localhost:$PMA_PORT"
 else
 echo -e "  ${BOLD}WordPress:${NC}   $WP_HOME"
