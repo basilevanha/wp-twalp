@@ -47,7 +47,7 @@ const ROOT = resolve(__dirname, "..");
 // Check .env exists
 // ──────────────────────────────────────────────
 if (!existsSync(resolve(ROOT, ".env"))) {
-    console.error(`\n\x1b[31mError: .env file not found. Run "npm run setup" first.\x1b[0m\n`);
+    console.error(`\n\x1b[31mError: .env file not found. Run "${PM} run setup" first.\x1b[0m\n`);
     process.exit(1);
 }
 
@@ -307,6 +307,6 @@ function showBanner() {
     }
     console.log("");
     console.log(`  ${DIM}Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.${NC}`);
-    console.log(`  ${DIM}Pour tout stopper : npm run stop${NC}`);
+    console.log(`  ${DIM}Pour tout stopper : ${PM} run stop${NC}`);
     console.log("");
 }

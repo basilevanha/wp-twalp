@@ -1,6 +1,8 @@
 # WP Boilerplate
 
-A modern WordPress development boilerplate with **Timber** (Twig), **Vite** (HMR), **SCSS**, and **Docker** — all wired together with an interactive setup CLI.
+A modern WordPress development boilerplate with **Timber** (Twig), **Vite** (HMR), and **Docker** — all wired together with an interactive setup CLI.
+
+Choose your stack: **SCSS** or **Tailwind**, **Vanilla JS** or **Alpine.js**.
 
 Works with **npm**, **pnpm**, **yarn**, and **bun** — auto-detected.
 
@@ -18,9 +20,10 @@ WordPress installed, theme activated, dev server ready. No manual configuration.
 
 | Tool | Role |
 |------|------|
-| **Vite 6** | HMR, SCSS compilation, JS bundling |
+| **Vite 6** | HMR, CSS/JS compilation, bundling |
 | **Timber 2** | Twig templating for WordPress |
-| **SCSS** | Preprocessor with BEM-friendly structure |
+| **SCSS** or **Tailwind** | CSS framework (chosen during setup) |
+| **Vanilla JS** or **Alpine.js** | JS interactions (chosen during setup) |
 | **ACF** | Custom fields with JSON sync (optional) |
 | **Docker** | WordPress + MySQL + phpMyAdmin |
 | **WP-CLI** | Automated WordPress setup |
@@ -39,7 +42,7 @@ wp-boilerplate/
 │   └── docker-compose.yml
 ├── src/                   # ← Your workspace
 │   ├── js/main.js        # JS entry point
-│   ├── scss/             # SCSS (variables, base, components, layouts)
+│   ├── scss/             # SCSS (if chosen) — or src/css/ for Tailwind
 │   ├── templates/        # Twig templates (layouts, pages, partials)
 │   ├── theme/            # PHP (functions.php, inc/, StarterSite.php)
 │   ├── acf-json/         # ACF field groups (git-versioned)
@@ -48,7 +51,7 @@ wp-boilerplate/
 ├── public/                # WordPress installation (gitignored)
 ├── vite.config.js
 ├── composer.json          # Timber
-└── package.json           # Vite, Sass, Chokidar
+└── package.json           # Vite + dependencies
 ```
 
 **Key principle:** `src/` is what you code and commit. `public/` is the WordPress installation (gitignored). Build tools live at the root, not in the theme.
@@ -72,19 +75,21 @@ cd my-project
 npm run setup
 ```
 
-The interactive CLI will ask:
+The interactive CLI walks you through 4 steps:
 
 1. **Project name** — used as theme slug, text domain, and Docker project name
-2. **Docker** — DB credentials, ports (auto-detected), optional database dump import
-3. **WordPress** — automatic setup (admin, language, clean defaults) or vanilla (manual setup via browser)
-4. **Features** — ACF support (yes/no)
+2. **Docker** — DB credentials (auto-generated), ports (auto-detected), optional database dump import
+3. **WordPress** — automatic setup (admin credentials, language, homepage type, clean defaults) or vanilla (manual setup via browser)
+4. **Features** — ACF (yes/no), CSS framework (SCSS/Tailwind), JS interactions (Vanilla/Alpine)
 
 Then it automatically:
 - Generates `.env`
 - Installs dependencies (Composer + your package manager)
+- Configures CSS/JS framework (installs Tailwind/Alpine if selected)
 - Starts Docker containers
 - Installs WordPress via WP-CLI (if automatic mode)
 - Activates your theme
+- Sets up homepage (latest posts or static page)
 - Removes default themes, plugins, and sample content
 - Sets permalinks to `/%postname%/`
 - Launches the dev server
@@ -107,7 +112,7 @@ npm run dev
 ╚══════════════════════════════════════════╝
 ```
 
-- Edit `.scss` → CSS hot-reloaded instantly (no page refresh)
+- Edit `.scss` or `.css` → CSS hot-reloaded instantly (no page refresh)
 - Edit `.twig` or `.php` → full page reload
 - Docker containers started automatically if needed
 - Vite finds a free port if 5173 is busy
@@ -121,6 +126,77 @@ npm run import   # Import a database dump (interactive file picker)
 npm run stop     # Stop Docker containers
 npm run reset    # Delete everything (with confirmation + optional dump)
 ```
+
+---
+
+## CSS framework
+
+The setup CLI lets you choose between SCSS and Tailwind.
+
+### SCSS (default)
+
+Traditional preprocessor with a BEM-friendly structure:
+
+```
+src/scss/
+├── main.scss           # Entry point (imports everything)
+├── _variables.scss     # Colors, fonts, breakpoints
+├── base/
+│   ├── _reset.scss     # CSS reset/normalize
+│   └── _typography.scss
+├── components/         # Button, card, form styles
+└── layouts/            # Header, footer, grid styles
+```
+
+Edit `.scss` files → Vite compiles and hot-reloads CSS instantly (no page refresh).
+
+### Tailwind
+
+Utility-first CSS. The setup installs `tailwindcss` + `@tailwindcss/vite`, removes SCSS, and creates:
+
+```
+src/css/
+└── main.css            # @import "tailwindcss" + @source for .twig files
+```
+
+Style directly in your `.twig` templates:
+
+```twig
+<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+  {{ __('Contact', 'my-theme') }}
+</button>
+```
+
+Tailwind scans all `.twig` files and only outputs the CSS classes you actually use. Copy-paste components from [Flowbite](https://flowbite.com/), [HyperUI](https://www.hyperui.dev/), [DaisyUI](https://daisyui.com/), or any Tailwind component library.
+
+> **Note:** with Tailwind, editing `.twig` files triggers a full page reload (not HMR) since styles live in the templates.
+
+---
+
+## JS interactions
+
+The setup CLI lets you choose between Vanilla JS and Alpine.js.
+
+### Vanilla JS (default)
+
+Write your own JavaScript in `src/js/main.js`. No framework, full control.
+
+### Alpine.js
+
+Lightweight reactive framework (~14 kB) for UI interactions. Declared directly in HTML/Twig:
+
+```twig
+<div x-data="{ open: false }">
+  <button @click="open = !open">Menu</button>
+  <nav x-show="open" x-transition>
+    {{ fn('wp_nav_menu', { theme_location: 'primary' }) }}
+  </nav>
+</div>
+```
+
+Perfect for menus, modals, tabs, accordions, counters — anything that would normally require querySelector + addEventListener boilerplate.
+
+The setup installs `alpinejs` and adds it to `main.js` automatically.
 
 ---
 
@@ -243,23 +319,6 @@ All UI strings are translation-ready with `{{ __('String', 'text-domain') }}`.
 
 ---
 
-## SCSS structure
-
-```
-src/scss/
-├── main.scss           # Entry point (imports everything)
-├── _variables.scss     # Colors, fonts, breakpoints
-├── base/
-│   ├── _reset.scss     # CSS reset/normalize
-│   └── _typography.scss
-├── components/         # Button, card, form styles
-└── layouts/            # Header, footer, grid styles
-```
-
-Imported via `src/js/main.js` — Vite handles the compilation.
-
----
-
 ## Resilient setup
 
 The setup CLI is designed to handle failures gracefully:
@@ -284,7 +343,7 @@ yarn setup        # yarn
 bun run setup     # bun
 ```
 
-Detection uses `npm_config_user_agent` (set by all PMs when running scripts), with lock file fallback. The same approach used by create-next-app and create-vite.
+Detection uses `npm_config_user_agent` (set by all PMs when running scripts), with lock file fallback. All CLI messages adapt to show the correct command for your PM.
 
 ---
 

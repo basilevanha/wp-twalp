@@ -24,9 +24,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$ROOT_DIR/.env"
 
+detect_pm() {
+  local ua="${npm_config_user_agent:-}"
+  if [ -n "$ua" ]; then
+    case "$ua" in
+      pnpm*) echo "pnpm"; return ;;
+      yarn*) echo "yarn"; return ;;
+      bun*)  echo "bun";  return ;;
+    esac
+  fi
+  if [ -f "$ROOT_DIR/pnpm-lock.yaml" ]; then echo "pnpm"
+  elif [ -f "$ROOT_DIR/yarn.lock" ]; then echo "yarn"
+  elif [ -f "$ROOT_DIR/bun.lockb" ] || [ -f "$ROOT_DIR/bun.lock" ]; then echo "bun"
+  else echo "npm"
+  fi
+}
+PM=$(detect_pm)
+
 # Check .env exists
 if [ ! -f "$ENV_FILE" ]; then
-  error "No .env file found. Run ${BOLD}npm run setup${NC} first."
+  error "No .env file found. Run ${BOLD}$PM run setup${NC} first."
   exit 1
 fi
 
@@ -37,7 +54,7 @@ DOCKER_COMPOSE_CMD="docker compose -f $ROOT_DIR/docker/docker-compose.yml --env-
 
 # Check containers are running
 if ! $DOCKER_COMPOSE_CMD ps --status running 2>/dev/null | grep -q "db"; then
-  error "Docker containers are not running. Run ${BOLD}npm run dev${NC} first."
+  error "Docker containers are not running. Run ${BOLD}$PM run dev${NC} first."
   exit 1
 fi
 

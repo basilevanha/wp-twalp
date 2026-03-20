@@ -33,9 +33,9 @@ require_once __DIR__ . '/src/StarterSite.php';
 // Load theme configuration.
 require_once __DIR__ . '/inc/timber.php';
 require_once __DIR__ . '/inc/vite.php';
-require_once __DIR__ . '/inc/acf.php';
 require_once __DIR__ . '/inc/cleanup.php';
 require_once __DIR__ . '/inc/i18n.php';
+require_once __DIR__ . '/inc/acf.php';
 
 // Initialize the theme.
 new StarterSite();

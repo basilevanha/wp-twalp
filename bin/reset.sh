@@ -19,6 +19,23 @@ info()    { echo -e "${CYAN}ℹ${NC}  $1"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$ROOT_DIR/.env"
+
+detect_pm() {
+  local ua="${npm_config_user_agent:-}"
+  if [ -n "$ua" ]; then
+    case "$ua" in
+      pnpm*) echo "pnpm"; return ;;
+      yarn*) echo "yarn"; return ;;
+      bun*)  echo "bun";  return ;;
+    esac
+  fi
+  if [ -f "$ROOT_DIR/pnpm-lock.yaml" ]; then echo "pnpm"
+  elif [ -f "$ROOT_DIR/yarn.lock" ]; then echo "yarn"
+  elif [ -f "$ROOT_DIR/bun.lockb" ] || [ -f "$ROOT_DIR/bun.lock" ]; then echo "bun"
+  else echo "npm"
+  fi
+}
+PM=$(detect_pm)
 DOCKER_COMPOSE="docker compose -f $ROOT_DIR/docker/docker-compose.yml"
 
 echo ""
@@ -73,5 +90,5 @@ if [ "$DO_RESET" = "y" ]; then
   # Clean files
   rm -rf "${ROOT_DIR:?}/public" "${ROOT_DIR:?}/node_modules" "${ROOT_DIR:?}/vendor" "${ROOT_DIR:?}/.env" "${ROOT_DIR:?}/.setup-state" "${ROOT_DIR:?}/composer.lock"
   rm -f "${ROOT_DIR:?}/package-lock.json" "${ROOT_DIR:?}/pnpm-lock.yaml" "${ROOT_DIR:?}/yarn.lock" "${ROOT_DIR:?}/bun.lockb" "${ROOT_DIR:?}/bun.lock"
-  success "Project reset. Run ${BOLD}npm run setup${NC} to start fresh."
+  success "Project reset. Run ${BOLD}$PM run setup${NC} to start fresh."
 fi
