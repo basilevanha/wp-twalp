@@ -93,9 +93,6 @@ run_wp() {
   $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
 }
 
-# Get current URL before import (for search-replace)
-OLD_URL=$(run_wp option get siteurl 2>/dev/null || true)
-
 # Import
 info "Importing $(basename "$SQL_FILE")..."
 $DOCKER_COMPOSE_CMD exec -T db sh -c \

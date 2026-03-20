@@ -71,7 +71,7 @@ if [ "$DO_RESET" = "y" ]; then
   fi
 
   # Clean files
-  rm -rf "$ROOT_DIR/public" "$ROOT_DIR/node_modules" "$ROOT_DIR/vendor" "$ROOT_DIR/.env" "$ROOT_DIR/.setup-state" "$ROOT_DIR/composer.lock"
-  rm -f "$ROOT_DIR/package-lock.json" "$ROOT_DIR/pnpm-lock.yaml" "$ROOT_DIR/yarn.lock" "$ROOT_DIR/bun.lockb" "$ROOT_DIR/bun.lock"
+  rm -rf "${ROOT_DIR:?}/public" "${ROOT_DIR:?}/node_modules" "${ROOT_DIR:?}/vendor" "${ROOT_DIR:?}/.env" "${ROOT_DIR:?}/.setup-state" "${ROOT_DIR:?}/composer.lock"
+  rm -f "${ROOT_DIR:?}/package-lock.json" "${ROOT_DIR:?}/pnpm-lock.yaml" "${ROOT_DIR:?}/yarn.lock" "${ROOT_DIR:?}/bun.lockb" "${ROOT_DIR:?}/bun.lock"
   success "Project reset. Run ${BOLD}npm run setup${NC} to start fresh."
 fi

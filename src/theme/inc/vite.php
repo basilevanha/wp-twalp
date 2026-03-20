@@ -62,6 +62,10 @@ function vite_enqueue_assets(): void {
 
 		$manifest = json_decode(file_get_contents($manifest_path), true);
 
+		if (!$manifest) {
+			return;
+		}
+
 		// CSS
 		if (isset($manifest['js/main.js']['css'])) {
 			foreach ($manifest['js/main.js']['css'] as $index => $css_file) {

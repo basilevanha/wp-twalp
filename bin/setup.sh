@@ -36,10 +36,10 @@ ask() {
   local var_name="$3"
   if [ -n "$default" ]; then
     read -rp "$(echo -e "${BOLD}$prompt${NC} [$default]: ")" value
-    eval "$var_name='${value:-$default}'"
+    printf -v "$var_name" '%s' "${value:-$default}"
   else
     read -rp "$(echo -e "${BOLD}$prompt${NC}: ")" value
-    eval "$var_name='$value'"
+    printf -v "$var_name" '%s' "$value"
   fi
 }
 
@@ -330,24 +330,14 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   fi
 
   # ── Save state for resume ──
-  cat > "$STATE_FILE" <<EOF
-PROJECT_NAME="$PROJECT_NAME"
-THEME_DIR="$THEME_DIR"
-WP_HOME="$WP_HOME"
-WP_PORT="${WP_PORT:-8080}"
-PMA_PORT="${PMA_PORT:-8081}"
-DB_NAME="$DB_NAME"
-DB_USER="$DB_USER"
-DB_PASSWORD="$DB_PASSWORD"
-WP_SETUP_MODE="$WP_SETUP_MODE"
-WP_ADMIN_USER="$WP_ADMIN_USER"
-WP_ADMIN_PASSWORD="$WP_ADMIN_PASSWORD"
-WP_ADMIN_EMAIL="$WP_ADMIN_EMAIL"
-WP_LOCALE="$WP_LOCALE"
-WP_CLEAN_DEFAULTS="${WP_CLEAN_DEFAULTS:-}"
-USE_ACF="$USE_ACF"
-IMPORT_DUMP="${IMPORT_DUMP:-}"
-EOF
+  # Use declare -p to safely serialize variables (handles special chars in values)
+  {
+    for _var in PROJECT_NAME THEME_DIR WP_HOME WP_PORT PMA_PORT DB_NAME DB_USER DB_PASSWORD \
+                WP_SETUP_MODE WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL WP_LOCALE \
+                WP_CLEAN_DEFAULTS USE_ACF IMPORT_DUMP; do
+      declare -p "$_var" 2>/dev/null || true
+    done
+  } > "$STATE_FILE"
 
 fi # end SKIP_QUESTIONS
 
@@ -409,14 +399,14 @@ fi
 if [ "$PROJECT_NAME" != "starter-theme" ]; then
   info "Replacing text domain 'starter-theme' → '$PROJECT_NAME'..."
   find "$ROOT_DIR/src/theme" -name "*.php" -exec \
-    sed -i '' "s/'starter-theme'/'$PROJECT_NAME'/g" {} + 2>/dev/null || \
+    sed -i '' "s|'starter-theme'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
   find "$ROOT_DIR/src/theme" -name "*.php" -exec \
-    sed -i "s/'starter-theme'/'$PROJECT_NAME'/g" {} +
+    sed -i "s|'starter-theme'|'$PROJECT_NAME'|g" {} +
 
   find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
-    sed -i '' "s/'starter-theme'/'$PROJECT_NAME'/g" {} + 2>/dev/null || \
+    sed -i '' "s|'starter-theme'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
   find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
-    sed -i "s/'starter-theme'/'$PROJECT_NAME'/g" {} +
+    sed -i "s|'starter-theme'|'$PROJECT_NAME'|g" {} +
 
   success "Text domain updated to '$PROJECT_NAME'"
 fi

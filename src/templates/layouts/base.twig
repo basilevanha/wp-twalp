@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html {{ site.language_attributes }}>
+<html {{ site.language_attributes|raw }}>
     {% block head %}
         {% include 'partials/head.twig' %}
     {% endblock %}
 
     <body class="{{ body_class }}">
-        {{ function('wp_body_open') }}
+        {{ function('wp_body_open')|raw }}
         <a class="skip-link screen-reader-text" href="#content">{{ __('Skip to content', 'starter-theme') }}</a>
         <header class="header">
             {% block header %}
@@ -37,7 +37,7 @@
         {% block footer %}
             {% include 'partials/footer.twig' %}
         {% endblock %}
-        {{ function('wp_footer') }}
+        {{ function('wp_footer')|raw }}
         {% do action('get_footer') %}
     </body>
 </html>

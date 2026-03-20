@@ -1,6 +1,6 @@
 services:
   wordpress:
-    image: wordpress:latest
+    image: wordpress:6.7-php8.2-apache
     ports:
       - "${WP_PORT:-8080}:80"
     volumes:

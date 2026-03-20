@@ -157,7 +157,7 @@ class StarterSite extends Site {
 	 * @return array
 	 */
 	public function update_twig_environment_options( $options ) {
-		// $options['autoescape'] = true;
+		$options['autoescape'] = true;
 
 		return $options;
 	}

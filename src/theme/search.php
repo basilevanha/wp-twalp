@@ -5,13 +5,15 @@
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  */
 
+namespace App;
+
 use Timber\Timber;
 
 $templates = [ 'templates/search.twig', 'templates/archive.twig', 'templates/index.twig' ];
 
 $context = Timber::context(
 	[
-		'title' => __( 'Search results for', 'starter-theme' ) . ' ' . get_search_query(),
+		'title' => __( 'Search results for', 'starter-theme' ) . ' ' . esc_html( get_search_query() ),
 	]
 );
 
