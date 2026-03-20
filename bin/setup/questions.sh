@@ -128,40 +128,14 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 3. Stack
+  # 3. Plugins
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  header "3/3 — Stack"
+  header "3/3 — Plugins"
 
   ask_yn "ACF (Advanced Custom Fields)?" "y" USE_ACF
   if [ "$USE_ACF" = "n" ]; then
     info "ACF will be removed from the theme."
   fi
-
-  echo ""
-  echo -e "  ${BOLD}CSS:${NC}"
-  choose CSS_FRAMEWORK 1 \
-    "SCSS (custom styling)" \
-    "Tailwind (utility-first)"
-
-  if [ "$CSS_FRAMEWORK" = "2" ]; then
-    CSS_FRAMEWORK="tailwind"
-  else
-    CSS_FRAMEWORK="scss"
-  fi
-
-  echo ""
-  echo -e "  ${BOLD}JavaScript:${NC}"
-  choose JS_FRAMEWORK 1 \
-    "Vanilla JS" \
-    "Alpine.js (reactive HTML attributes)"
-
-  if [ "$JS_FRAMEWORK" = "2" ]; then
-    JS_FRAMEWORK="alpine"
-  else
-    JS_FRAMEWORK="vanilla"
-  fi
-
-  success "Stack: ${BOLD}${CSS_FRAMEWORK}${NC} + ${BOLD}${JS_FRAMEWORK}${NC} + ACF: ${BOLD}${USE_ACF}${NC}"
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # Save state for resume
@@ -169,8 +143,7 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   {
     for _var in PROJECT_NAME THEME_DIR WP_HOME WP_PORT PMA_PORT DB_NAME DB_USER DB_PASSWORD \
                 WP_SETUP_MODE WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL WP_LOCALE \
-                WP_CLEAN_DEFAULTS WP_HOMEPAGE WP_HOMEPAGE_TITLE USE_ACF \
-                CSS_FRAMEWORK JS_FRAMEWORK IMPORT_DUMP; do
+                WP_CLEAN_DEFAULTS WP_HOMEPAGE WP_HOMEPAGE_TITLE USE_ACF IMPORT_DUMP; do
       declare -p "$_var" 2>/dev/null || true
     done
   } > "$STATE_FILE"

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import liveReload from 'vite-plugin-live-reload';
 import path from 'path';
 import { config } from 'dotenv';
@@ -13,6 +14,7 @@ const themeBase = '/wp-content/themes/' + path.basename(resolvedThemeDir) + '/di
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     // Watch PHP and Twig files in the theme directory for live reload
     liveReload([
       `${resolvedThemeDir}/**/*.php`,
@@ -41,13 +43,5 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     cors: true,
-  },
-
-  css: {
-    preprocessorOptions: {
-      scss: {
-        api: 'modern-compiler',
-      },
-    },
   },
 });

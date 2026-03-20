@@ -1,5 +1,7 @@
-// Import styles (processed by Vite)
-import '../scss/main.scss';
+// Styles (processed by Vite + Tailwind)
+import '../css/main.css';
 
-// Theme scripts
-console.log('Theme loaded');
+// Alpine.js — reactive HTML attributes for UI interactions
+import Alpine from 'alpinejs';
+window.Alpine = Alpine;
+Alpine.start();

@@ -1,8 +1,6 @@
 # WP Boilerplate
 
-A modern WordPress development boilerplate with **Timber** (Twig), **Vite** (HMR), and **Docker** — all wired together with an interactive setup CLI.
-
-Choose your stack: **SCSS** or **Tailwind**, **Vanilla JS** or **Alpine.js**.
+A modern WordPress development boilerplate with **Timber** (Twig), **Tailwind CSS**, **Alpine.js**, **Vite** (HMR), and **Docker** — all wired together with an interactive setup CLI.
 
 Works with **npm**, **pnpm**, **yarn**, and **bun** — auto-detected.
 
@@ -20,10 +18,10 @@ WordPress installed, theme activated, dev server ready. No manual configuration.
 
 | Tool | Role |
 |------|------|
+| **Tailwind CSS 4** | Utility-first CSS, scans `.twig` templates |
+| **Alpine.js** | Reactive UI interactions (~14 kB), declared in HTML |
 | **Vite 6** | HMR, CSS/JS compilation, bundling |
 | **Timber 2** | Twig templating for WordPress |
-| **SCSS** or **Tailwind** | CSS framework (chosen during setup) |
-| **Vanilla JS** or **Alpine.js** | JS interactions (chosen during setup) |
 | **ACF** | Custom fields with JSON sync (optional) |
 | **Docker** | WordPress + MySQL + phpMyAdmin |
 | **WP-CLI** | Automated WordPress setup |
@@ -41,8 +39,8 @@ wp-boilerplate/
 ├── docker/
 │   └── docker-compose.yml
 ├── src/                   # ← Your workspace
-│   ├── js/main.js        # JS entry point
-│   ├── scss/             # SCSS (if chosen) — or src/css/ for Tailwind
+│   ├── js/main.js        # JS entry point (imports CSS + Alpine)
+│   ├── css/main.css      # Tailwind entry point
 │   ├── templates/        # Twig templates (layouts, pages, partials)
 │   ├── theme/            # PHP (functions.php, inc/, StarterSite.php)
 │   ├── acf-json/         # ACF field groups (git-versioned)
@@ -51,7 +49,7 @@ wp-boilerplate/
 ├── public/                # WordPress installation (gitignored)
 ├── vite.config.js
 ├── composer.json          # Timber
-└── package.json           # Vite + dependencies
+└── package.json           # Vite, Tailwind, Alpine
 ```
 
 **Key principle:** `src/` is what you code and commit. `public/` is the WordPress installation (gitignored). Build tools live at the root, not in the theme.
@@ -65,7 +63,6 @@ wp-boilerplate/
 - [Node.js](https://nodejs.org/) (v18+)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Composer](https://getcomposer.org/)
-- A package manager: npm (included with Node), [pnpm](https://pnpm.io/), [yarn](https://yarnpkg.com/), or [bun](https://bun.sh/)
 
 ### Setup
 
@@ -75,21 +72,18 @@ cd my-project
 npm run setup
 ```
 
-The interactive CLI walks you through 4 steps:
+The interactive CLI walks you through 3 steps:
 
-1. **Project name** — used as theme slug, text domain, and Docker project name
-2. **Docker** — DB credentials (auto-generated), ports (auto-detected), optional database dump import
-3. **WordPress** — automatic setup (admin credentials, language, homepage type, clean defaults) or vanilla (manual setup via browser)
-4. **Features** — ACF (yes/no), CSS framework (SCSS/Tailwind), JS interactions (Vanilla/Alpine)
+1. **Project** — name (slug), DB credentials, optional dump import
+2. **WordPress** — automatic setup (admin, language, homepage, clean defaults) or vanilla (manual via browser)
+3. **Plugins** — ACF (yes/no)
 
 Then it automatically:
 - Generates `.env`
 - Installs dependencies (Composer + your package manager)
-- Configures CSS/JS framework (installs Tailwind/Alpine if selected)
 - Starts Docker containers
 - Installs WordPress via WP-CLI (if automatic mode)
-- Activates your theme
-- Sets up homepage (latest posts or static page)
+- Activates your theme and generates a front-page template
 - Removes default themes, plugins, and sample content
 - Sets permalinks to `/%postname%/`
 - Launches the dev server
@@ -112,8 +106,9 @@ npm run dev
 ╚══════════════════════════════════════════╝
 ```
 
-- Edit `.scss` or `.css` → CSS hot-reloaded instantly (no page refresh)
-- Edit `.twig` or `.php` → full page reload
+- Edit `.twig` → Tailwind rebuilds CSS + full page reload
+- Edit `.css` → CSS hot-reloaded instantly (no page refresh)
+- Edit `.php` → full page reload
 - Docker containers started automatically if needed
 - Vite finds a free port if 5173 is busy
 
@@ -129,35 +124,7 @@ npm run reset    # Delete everything (with confirmation + optional dump)
 
 ---
 
-## CSS framework
-
-The setup CLI lets you choose between SCSS and Tailwind.
-
-### SCSS (default)
-
-Traditional preprocessor with a BEM-friendly structure:
-
-```
-src/scss/
-├── main.scss           # Entry point (imports everything)
-├── _variables.scss     # Colors, fonts, breakpoints
-├── base/
-│   ├── _reset.scss     # CSS reset/normalize
-│   └── _typography.scss
-├── components/         # Button, card, form styles
-└── layouts/            # Header, footer, grid styles
-```
-
-Edit `.scss` files → Vite compiles and hot-reloads CSS instantly (no page refresh).
-
-### Tailwind
-
-Utility-first CSS. The setup installs `tailwindcss` + `@tailwindcss/vite`, removes SCSS, and creates:
-
-```
-src/css/
-└── main.css            # @import "tailwindcss" + @source for .twig files
-```
+## Styling with Tailwind
 
 Style directly in your `.twig` templates:
 
@@ -169,21 +136,20 @@ Style directly in your `.twig` templates:
 
 Tailwind scans all `.twig` files and only outputs the CSS classes you actually use. Copy-paste components from [Flowbite](https://flowbite.com/), [HyperUI](https://www.hyperui.dev/), [DaisyUI](https://daisyui.com/), or any Tailwind component library.
 
-> **Note:** with Tailwind, editing `.twig` files triggers a full page reload (not HMR) since styles live in the templates.
+Custom CSS goes in `src/css/main.css`:
+
+```css
+@import "tailwindcss";
+@source "../templates/**/*.twig";
+
+/* Custom styles below */
+```
 
 ---
 
-## JS interactions
+## Interactions with Alpine.js
 
-The setup CLI lets you choose between Vanilla JS and Alpine.js.
-
-### Vanilla JS (default)
-
-Write your own JavaScript in `src/js/main.js`. No framework, full control.
-
-### Alpine.js
-
-Lightweight reactive framework (~14 kB) for UI interactions. Declared directly in HTML/Twig:
+Declare reactive behavior directly in your Twig templates:
 
 ```twig
 <div x-data="{ open: false }">
@@ -194,9 +160,7 @@ Lightweight reactive framework (~14 kB) for UI interactions. Declared directly i
 </div>
 ```
 
-Perfect for menus, modals, tabs, accordions, counters — anything that would normally require querySelector + addEventListener boilerplate.
-
-The setup installs `alpinejs` and adds it to `main.js` automatically.
+Perfect for menus, modals, tabs, accordions — anything that would normally require querySelector + addEventListener boilerplate. Alpine is loaded globally via `main.js`.
 
 ---
 
@@ -250,23 +214,13 @@ npm run dump
 # → database/dump-20260319-143052.sql
 ```
 
-Dumps are gitignored by default. Each dump is timestamped — you can keep multiple versions.
+Dumps are gitignored by default. Each dump is timestamped.
 
 ### Import
 
 Two ways to import a dump:
 
-**During setup** — if dumps exist in `database/`, the setup CLI offers to restore one instead of starting with an empty database:
-
-```
-  ℹ  Database dumps found:
-
-  → 1) dump-20260319-143052.sql (2.3 MB)
-    2) dump-20260318-091530.sql (1.8 MB)
-    3) Fresh install (empty database)
-
-  Choose [3]:
-```
+**During setup** — if dumps exist in `database/`, the setup CLI offers to restore one instead of starting with an empty database.
 
 **On a running project:**
 
@@ -285,8 +239,6 @@ npm run reset    # Confirmation prompt → optional dump → wipe everything
 npm run setup    # Start fresh (will offer to restore from dump)
 ```
 
-The reset asks for confirmation and offers to dump the database before deleting.
-
 ---
 
 ## Templates
@@ -298,7 +250,8 @@ src/templates/
 ├── layouts/
 │   └── base.twig              # HTML skeleton (head, body, footer)
 ├── templates/
-│   ├── index.twig             # Home page
+│   ├── front-page.twig        # Homepage (generated by setup)
+│   ├── index.twig             # Blog / fallback
 │   ├── single.twig            # Single post
 │   ├── page.twig              # Static page
 │   ├── archive.twig           # Archive/category
@@ -321,20 +274,17 @@ All UI strings are translation-ready with `{{ __('String', 'text-domain') }}`.
 
 ## Resilient setup
 
-The setup CLI is designed to handle failures gracefully:
-
 - **Pre-flight checks** — verifies Node, package manager, Composer, Docker before starting
 - **Resume after failure** — answers are saved to `.setup-state`. If setup crashes, re-run and it offers to resume
 - **Port detection** — finds free ports if 8080/8081/5173 are busy
 - **Volume detection** — warns if a database already exists for the project name
 - **Vanilla mode** — skip WP-CLI configuration and set up WordPress manually via browser
-- **Idempotent** — safe to re-run
 
 ---
 
 ## Package manager support
 
-The boilerplate auto-detects your package manager. Use whichever you prefer:
+Auto-detected. Use whichever you prefer:
 
 ```bash
 npm run setup     # npm
@@ -343,7 +293,7 @@ yarn setup        # yarn
 bun run setup     # bun
 ```
 
-Detection uses `npm_config_user_agent` (set by all PMs when running scripts), with lock file fallback. All CLI messages adapt to show the correct command for your PM.
+All CLI messages adapt to show the correct command for your PM.
 
 ---
 
@@ -353,7 +303,7 @@ Detection uses `npm_config_user_agent` (set by all PMs when running scripts), wi
 npm run build
 ```
 
-This produces a self-contained theme in `public/wp-content/themes/{name}/` with:
+Produces a self-contained theme with:
 - Compiled and minified CSS/JS with content hashes
 - `vendor/` directory (Timber) included
 - `manifest.json` for cache-busting

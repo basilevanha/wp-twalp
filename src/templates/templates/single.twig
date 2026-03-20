@@ -1,39 +1,35 @@
 {% extends 'layouts/base.twig' %}
 
 {% block content %}
-    <div class="content-wrapper">
-        <article class="post-type-{{ post.type }}" id="post-{{ post.id }}">
-            {% if post.thumbnail %}
-                <img src="{{ post.thumbnail.src|resize(1200, 300) }}" alt="{{ post.thumbnail.alt|default(post.title) }}" />
-            {% endif %}
-            <section class="article-content">
-                <h1 class="article-h1">{{ post.title }}</h1>
-                <p class="blog-author">
-                    <span>{{ __('By', 'starter-theme') }}</span>
-                    <a href="{{ post.author.path }}">{{ post.author.name }}</a>
-                    <span>&bull;</span>
-                    <time datetime="{{ post.date|date('Y-m-d H:i:s') }}">{{ post.date }}</time>
-                </p>
-                <div class="article-body">{{ post.content|raw }}</div>
-            </section>
-            <section class="comment-box">
-                <div class="comments">
-                    {% if post.comments %}
-                        <h3>{{ __('Comments', 'starter-theme') }}</h3>
-                        {% for cmt in post.comments %}
-                            {% include 'partials/comment.twig' with {
-                                comment: cmt
-                            } %}
-                        {% endfor %}
-                    {% endif %}
-                </div>
+	<article id="post-{{ post.id }}">
+		{% if post.thumbnail %}
+			<img src="{{ post.thumbnail.src|resize(1200, 300) }}" alt="{{ post.thumbnail.alt|default(post.title) }}" />
+		{% endif %}
 
-                {% if post.comment_status == 'closed' %}
-                    <p>{{ __('Comments for this post are closed', 'starter-theme') }}</p>
-                {% else %}
-                    {% include 'partials/comment-form.twig' %}
-                {% endif %}
-            </section>
-        </article>
-    </div>
+		<h1>{{ post.title }}</h1>
+
+		<p>
+			{{ __('By', 'starter-theme') }}
+			<a href="{{ post.author.path }}">{{ post.author.name }}</a>
+			&bull;
+			<time datetime="{{ post.date|date('Y-m-d H:i:s') }}">{{ post.date }}</time>
+		</p>
+
+		<div>{{ post.content|raw }}</div>
+
+		<section>
+			{% if post.comments %}
+				<h3>{{ __('Comments', 'starter-theme') }}</h3>
+				{% for cmt in post.comments %}
+					{% include 'partials/comment.twig' with { comment: cmt } %}
+				{% endfor %}
+			{% endif %}
+
+			{% if post.comment_status == 'closed' %}
+				<p>{{ __('Comments for this post are closed', 'starter-theme') }}</p>
+			{% else %}
+				{% include 'partials/comment-form.twig' %}
+			{% endif %}
+		</section>
+	</article>
 {% endblock %}

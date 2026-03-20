@@ -63,10 +63,7 @@ if [ -f "$STATE_FILE" ]; then
   info "Saved answers:"
   echo -e "      Project:   ${BOLD}$PROJECT_NAME${NC}"
   echo -e "      WP setup:  ${BOLD}$([ "${WP_SETUP_MODE:-1}" = "1" ] && echo "Automatic ($WP_ADMIN_USER)" || echo "Vanilla")${NC}"
-  echo -e "      Ports:     ${BOLD}:$WP_PORT${NC} / ${BOLD}:$PMA_PORT${NC}"
   echo -e "      ACF:       ${BOLD}$USE_ACF${NC}"
-  echo -e "      CSS:       ${BOLD}${CSS_FRAMEWORK:-scss}${NC}"
-  echo -e "      JS:        ${BOLD}${JS_FRAMEWORK:-vanilla}${NC}"
   echo ""
   ask_yn "Resume with these answers?" "y" RESUME
   if [ "$RESUME" = "y" ]; then
