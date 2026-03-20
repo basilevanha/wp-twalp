@@ -10,7 +10,8 @@
     "setup": "bash bin/setup.sh",
     "stop": "docker compose -f docker/docker-compose.yml --env-file .env down",
     "dump": "DUMP_FILE=database/dump-$(date +%Y%m%d-%H%M%S).sql && docker compose -f docker/docker-compose.yml --env-file .env exec -T db sh -c 'mysqldump --no-tablespaces -u\"$MYSQL_USER\" -p\"$MYSQL_PASSWORD\" \"$MYSQL_DATABASE\" 2>/dev/null' > \"$DUMP_FILE\" && echo \"✔ Database exported to $DUMP_FILE\"",
-    "reset": "docker compose -f docker/docker-compose.yml --env-file .env down -v 2>/dev/null; rm -rf public .env .setup-state node_modules vendor && echo '✔ Project reset. Run npm run setup to start fresh.'"
+    "import": "bash bin/import.sh",
+    "reset": "bash bin/reset.sh"
   },
   "devDependencies": {
     "chokidar": "^4.0.0",

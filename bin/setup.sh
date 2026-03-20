@@ -72,6 +72,28 @@ ENV_FILE="$ROOT_DIR/.env"
 STATE_FILE="$ROOT_DIR/.setup-state"
 
 # ──────────────────────────────────────────────
+# Detect package manager (same approach as create-next-app / create-vite)
+# Priority: npm_config_user_agent → lock file → npm
+# ──────────────────────────────────────────────
+detect_pm() {
+  local ua="${npm_config_user_agent:-}"
+  if [ -n "$ua" ]; then
+    case "$ua" in
+      pnpm*) echo "pnpm"; return ;;
+      yarn*) echo "yarn"; return ;;
+      bun*)  echo "bun";  return ;;
+    esac
+  fi
+  if [ -f "$ROOT_DIR/pnpm-lock.yaml" ]; then echo "pnpm"
+  elif [ -f "$ROOT_DIR/yarn.lock" ]; then echo "yarn"
+  elif [ -f "$ROOT_DIR/bun.lockb" ] || [ -f "$ROOT_DIR/bun.lock" ]; then echo "bun"
+  else echo "npm"
+  fi
+}
+
+PM=$(detect_pm)
+
+# ──────────────────────────────────────────────
 # Pre-flight checks
 # ──────────────────────────────────────────────
 preflight() {
@@ -82,13 +104,18 @@ preflight() {
     errors=$((errors + 1))
   fi
 
-  if ! command -v npm &>/dev/null; then
-    error "npm is not installed"
+  if ! command -v "$PM" &>/dev/null; then
+    error "$PM is not installed"
     errors=$((errors + 1))
   fi
 
   if ! command -v composer &>/dev/null; then
     warn "Composer not found — you will need to install dependencies manually"
+  fi
+
+  if ! docker info &>/dev/null 2>&1; then
+    error "Docker daemon is not running. Please start Docker Desktop and re-run setup."
+    errors=$((errors + 1))
   fi
 
   if [ "$errors" -gt 0 ]; then
@@ -133,9 +160,8 @@ if [ -f "$STATE_FILE" ]; then
   echo ""
   info "Saved answers:"
   echo -e "    Project:     ${BOLD}$PROJECT_NAME${NC}"
-  echo -e "    Admin:       ${BOLD}$WP_ADMIN_USER${NC} / ${BOLD}$WP_ADMIN_PASSWORD${NC}"
-  echo -e "    Environment: ${BOLD}$ENV_CHOICE${NC} (1=Docker, 2=DevKinsta, 3=Existing WP)"
-  echo -e "    Theme dir:   ${BOLD}$THEME_DIR${NC}"
+  echo -e "    WP setup:    ${BOLD}$([ "${WP_SETUP_MODE:-1}" = "1" ] && echo "Automatic ($WP_ADMIN_USER)" || echo "Vanilla")${NC}"
+  echo -e "    Ports:       ${BOLD}WordPress :$WP_PORT${NC} / ${BOLD}phpMyAdmin :$PMA_PORT${NC}"
   echo -e "    ACF:         ${BOLD}$USE_ACF${NC}"
   echo ""
   ask_yn "Resume with these answers?" "y" RESUME
@@ -153,7 +179,7 @@ fi
 # ──────────────────────────────────────────────
 if [ "$SKIP_QUESTIONS" != "y" ]; then
 
-  # ── 1. Project & WordPress admin ──
+  # ── 1. Project ──
   header "1/4 — Project"
 
   ask "Project name (slug, used for theme folder and text domain)" "starter-theme" PROJECT_NAME
@@ -162,153 +188,140 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
   success "Project slug: ${BOLD}$PROJECT_NAME${NC}"
 
-  echo ""
-  ask "WordPress admin username" "admin" WP_ADMIN_USER
-  ask "WordPress admin password" "admin" WP_ADMIN_PASSWORD
-  ask "WordPress admin email" "admin@example.com" WP_ADMIN_EMAIL
-  ask "WordPress language (e.g. fr_FR, en_US, nl_NL)" "fr_FR" WP_LOCALE
+  # ── 2. Docker environment ──
+  header "2/4 — Docker"
 
-  # ── 2. Environment type ──
-  header "2/4 — Environment"
-
-  echo "  1) Docker (included docker-compose, recommended)"
-  echo "  2) DevKinsta (local site already created)"
-  echo "  3) Existing WordPress installation"
-  echo ""
-  read -rp "$(echo -e "${BOLD}Choose your environment${NC} [1]: ")" ENV_CHOICE
-  ENV_CHOICE="${ENV_CHOICE:-1}"
-
-  THEME_DIR=""
-  WP_HOME=""
-  VENDOR_PATH=""
-  DB_NAME="wordpress"
-  DB_USER="wordpress"
-  DB_PASSWORD="wordpress"
+  THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
+  VENDOR_PATH="/var/www/vendor"
   DB_HOST="db"
-  USE_DOCKER="n"
 
-  case "$ENV_CHOICE" in
-    1)
-      # Check Docker before going further
-      if ! docker info &>/dev/null 2>&1; then
-        error "Docker daemon is not running. Please start Docker Desktop and re-run setup."
-        exit 1
+  # DB name is derived from slug (underscores, prefixed with wp_)
+  DB_NAME="wp_$(echo "$PROJECT_NAME" | tr '-' '_')"
+
+  # Check if a Docker volume already exists for this project
+  VOLUME_NAME="${PROJECT_NAME}_db_data"
+  if docker volume inspect "$VOLUME_NAME" &>/dev/null; then
+    warn "A database volume ${BOLD}${VOLUME_NAME}${NC} already exists for this project."
+    echo ""
+    echo "  1) Use existing database (keep data)"
+    echo "  2) Create a new project name"
+    echo "  3) Delete old database and start fresh"
+    echo ""
+    read -rp "$(echo -e "${BOLD}Choose${NC} [1]: ")" DB_CHOICE
+    DB_CHOICE="${DB_CHOICE:-1}"
+    case "$DB_CHOICE" in
+      2)
+        info "Re-run setup with a different project name."
+        exit 0
+        ;;
+      3)
+        info "Removing old volume ${VOLUME_NAME}..."
+        docker volume rm "$VOLUME_NAME" 2>/dev/null && success "Volume removed" || warn "Could not remove volume (containers may still be using it)"
+        ;;
+      *)
+        info "Reusing existing database"
+        ;;
+    esac
+  fi
+
+  # Find available ports (auto-increment like Vite)
+  find_free_port() {
+    local port=$1
+    while lsof -i :"$port" &>/dev/null; do
+      port=$((port + 1))
+    done
+    echo "$port"
+  }
+
+  WP_PORT=$(find_free_port 8080)
+  PMA_PORT=$(find_free_port $((WP_PORT + 1)))
+
+  if [ "$WP_PORT" != "8080" ]; then
+    warn "Port 8080 is busy, using ${BOLD}${WP_PORT}${NC} for WordPress"
+  fi
+  if [ "$PMA_PORT" != "8081" ]; then
+    warn "Port 8081 is busy, using ${BOLD}${PMA_PORT}${NC} for phpMyAdmin"
+  fi
+
+  WP_HOME="http://localhost:$WP_PORT"
+
+  # DB user/password with smart defaults (user can override by typing)
+  DB_PASSWORD_DEFAULT=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 16 2>/dev/null) || true
+  [ -z "$DB_PASSWORD_DEFAULT" ] && DB_PASSWORD_DEFAULT="wp_$(date +%s)"
+  ask "Database user" "$DB_NAME" DB_USER
+  ask "Database password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD
+
+  # Check for existing database dumps
+  IMPORT_DUMP=""
+  DUMP_FILES=()
+  if [ -d "$ROOT_DIR/database" ]; then
+    while IFS= read -r -d '' f; do
+      DUMP_FILES+=("$f")
+    done < <(find "$ROOT_DIR/database" -name "dump-*.sql" -print0 2>/dev/null | sort -rz)
+  fi
+
+  if [ "${#DUMP_FILES[@]}" -gt 0 ]; then
+    echo ""
+    info "Database dumps found:"
+    echo ""
+    dump_i=1
+    for f in "${DUMP_FILES[@]}"; do
+      fname=$(basename "$f")
+      fsize=$(du -h "$f" | cut -f1 | tr -d ' ')
+      if [ "$dump_i" -eq 1 ]; then
+        echo -e "  ${CYAN}→${NC} ${BOLD}${dump_i})${NC} ${fname} (${fsize})"
+      else
+        echo -e "    ${dump_i}) ${fname} (${fsize})"
       fi
+      dump_i=$((dump_i + 1))
+    done
+    echo -e "    ${dump_i}) Fresh install (empty database)"
+    echo ""
+    read -rp "$(echo -e "${BOLD}Choose${NC} [$dump_i]: ")" DUMP_CHOICE
+    DUMP_CHOICE="${DUMP_CHOICE:-$dump_i}"
 
-      USE_DOCKER="y"
-      THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
-      VENDOR_PATH="/var/www/vendor"
-
-      # DB name is derived from slug (underscores, prefixed with wp_)
-      DB_NAME="wp_$(echo "$PROJECT_NAME" | tr '-' '_')"
-      info "Database name: ${BOLD}${DB_NAME}${NC} (derived from project slug)"
-
-      # Check if a Docker volume already exists for this project
-      VOLUME_NAME="${PROJECT_NAME}_db_data"
-      if docker volume inspect "$VOLUME_NAME" &>/dev/null; then
-        warn "A database volume ${BOLD}${VOLUME_NAME}${NC} already exists for this project."
-        echo ""
-        echo "  1) Use existing database (keep data)"
-        echo "  2) Create a new project name"
-        echo "  3) Delete old database and start fresh"
-        echo ""
-        read -rp "$(echo -e "${BOLD}Choose${NC} [1]: ")" DB_CHOICE
-        DB_CHOICE="${DB_CHOICE:-1}"
-        case "$DB_CHOICE" in
-          2)
-            info "Re-run setup with a different project name."
-            exit 0
-            ;;
-          3)
-            info "Removing old volume ${VOLUME_NAME}..."
-            docker volume rm "$VOLUME_NAME" 2>/dev/null && success "Volume removed" || warn "Could not remove volume (containers may still be using it)"
-            ;;
-          *)
-            info "Reusing existing database"
-            ;;
-        esac
+    if [ "$DUMP_CHOICE" -lt "$dump_i" ] 2>/dev/null; then
+      idx=$((DUMP_CHOICE - 1))
+      if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#DUMP_FILES[@]}" ]; then
+        IMPORT_DUMP="${DUMP_FILES[$idx]}"
+        success "Will import: $(basename "$IMPORT_DUMP")"
       fi
+    else
+      success "Fresh install selected"
+    fi
+  fi
 
-      # Find available ports (auto-increment like Vite)
-      find_free_port() {
-        local port=$1
-        while lsof -i :"$port" &>/dev/null; do
-          port=$((port + 1))
-        done
-        echo "$port"
-      }
+  success "Docker (WordPress: :${WP_PORT}, phpMyAdmin: :${PMA_PORT})"
 
-      WP_PORT=$(find_free_port 8080)
-      PMA_PORT=$(find_free_port $((WP_PORT + 1)))
+  # ── 3. WordPress configuration ──
+  header "3/4 — WordPress"
 
-      if [ "$WP_PORT" != "8080" ]; then
-        warn "Port 8080 is busy, using ${BOLD}${WP_PORT}${NC} for WordPress"
-      fi
-      if [ "$PMA_PORT" != "8081" ]; then
-        warn "Port 8081 is busy, using ${BOLD}${PMA_PORT}${NC} for phpMyAdmin"
-      fi
+  echo "  1) Automatic setup via CLI (recommended)"
+  echo "  2) Vanilla (manual setup via browser)"
+  echo ""
+  read -rp "$(echo -e "${BOLD}Choose${NC} [1]: ")" WP_SETUP_MODE
+  WP_SETUP_MODE="${WP_SETUP_MODE:-1}"
 
-      WP_HOME="http://localhost:$WP_PORT"
+  WP_ADMIN_USER=""
+  WP_ADMIN_PASSWORD=""
+  WP_ADMIN_EMAIL=""
+  WP_LOCALE=""
+  WP_CLEAN_DEFAULTS=""
 
-      # DB user/password with smart defaults (user can override by typing)
-      DB_PASSWORD_DEFAULT=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 16 2>/dev/null) || true
-      [ -z "$DB_PASSWORD_DEFAULT" ] && DB_PASSWORD_DEFAULT="wp_$(date +%s)"
-      ask "Database user" "$DB_NAME" DB_USER
-      ask "Database password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD
-      DB_HOST="db"
+  if [ "$WP_SETUP_MODE" = "1" ]; then
+    echo ""
+    ask "Admin username" "admin" WP_ADMIN_USER
+    ask "Admin password" "admin" WP_ADMIN_PASSWORD
+    ask "Admin email" "admin@example.com" WP_ADMIN_EMAIL
+    ask "Language (e.g. fr_FR, en_US, nl_NL)" "fr_FR" WP_LOCALE
+    ask_yn "Clean default themes & plugins?" "y" WP_CLEAN_DEFAULTS
+    success "Automatic setup selected"
+  else
+    success "Vanilla mode — configure WordPress at http://localhost:$WP_PORT after setup"
+  fi
 
-      success "Environment: Docker (WordPress: :${WP_PORT}, phpMyAdmin: :${PMA_PORT})"
-      ;;
-    2)
-      # DevKinsta
-      ask "Path to your DevKinsta site root (e.g. ~/DevKinsta/public/my-site)" "" DEVKINSTA_PATH
-
-      # Expand ~ to $HOME
-      DEVKINSTA_PATH="${DEVKINSTA_PATH/#\~/$HOME}"
-
-      if [ ! -d "$DEVKINSTA_PATH" ]; then
-        error "Directory not found: $DEVKINSTA_PATH"
-        exit 1
-      fi
-
-      THEME_DIR="$DEVKINSTA_PATH/wp-content/themes/$PROJECT_NAME"
-      VENDOR_PATH=""
-      DB_HOST="localhost"
-      USE_DOCKER="n"
-      WP_HOME=""
-
-      ask "WordPress URL" "http://localhost" WP_HOME
-
-      success "Environment: DevKinsta → $THEME_DIR"
-      ;;
-    3)
-      # Existing WP
-      ask "Path to your WordPress installation (the folder with wp-content/)" "" WP_PATH
-      WP_PATH="${WP_PATH/#\~/$HOME}"
-
-      if [ ! -d "$WP_PATH/wp-content" ]; then
-        error "wp-content/ not found in: $WP_PATH"
-        exit 1
-      fi
-
-      THEME_DIR="$WP_PATH/wp-content/themes/$PROJECT_NAME"
-      VENDOR_PATH=""
-      DB_HOST="localhost"
-      USE_DOCKER="n"
-      WP_HOME=""
-
-      ask "WordPress URL" "http://localhost" WP_HOME
-
-      success "Environment: Existing WP → $THEME_DIR"
-      ;;
-    *)
-      error "Invalid choice"
-      exit 1
-      ;;
-  esac
-
-  # ── 3. Functional options ──
-  header "3/4 — Features"
+  # ── 4. Functional options ──
+  header "4/4 — Features"
 
   ask_yn "Do you use ACF (Advanced Custom Fields)?" "y" USE_ACF
 
@@ -319,22 +332,21 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # ── Save state for resume ──
   cat > "$STATE_FILE" <<EOF
 PROJECT_NAME="$PROJECT_NAME"
-ENV_CHOICE="$ENV_CHOICE"
-USE_DOCKER="$USE_DOCKER"
 THEME_DIR="$THEME_DIR"
 WP_HOME="$WP_HOME"
 WP_PORT="${WP_PORT:-8080}"
 PMA_PORT="${PMA_PORT:-8081}"
-VENDOR_PATH="$VENDOR_PATH"
 DB_NAME="$DB_NAME"
 DB_USER="$DB_USER"
 DB_PASSWORD="$DB_PASSWORD"
-DB_HOST="$DB_HOST"
-USE_ACF="$USE_ACF"
+WP_SETUP_MODE="$WP_SETUP_MODE"
 WP_ADMIN_USER="$WP_ADMIN_USER"
 WP_ADMIN_PASSWORD="$WP_ADMIN_PASSWORD"
 WP_ADMIN_EMAIL="$WP_ADMIN_EMAIL"
 WP_LOCALE="$WP_LOCALE"
+WP_CLEAN_DEFAULTS="${WP_CLEAN_DEFAULTS:-}"
+USE_ACF="$USE_ACF"
+IMPORT_DUMP="${IMPORT_DUMP:-}"
 EOF
 
 fi # end SKIP_QUESTIONS
@@ -342,7 +354,7 @@ fi # end SKIP_QUESTIONS
 # ──────────────────────────────────────────────
 # 4. Configuration
 # ──────────────────────────────────────────────
-header "4/4 — Configuration & Setup"
+header "Configuration & Setup"
 
 # ── Write .env (with confirmation if exists) ──
 WRITE_ENV="y"
@@ -372,10 +384,10 @@ WP_SITEURL=http://localhost:$WP_PORT
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
 DB_PASSWORD=$DB_PASSWORD
-DB_HOST=$DB_HOST
+DB_HOST=db
 
-# Vendor path inside Docker container (leave empty for local/DevKinsta)
-VENDOR_PATH=$VENDOR_PATH
+# Vendor path inside Docker container
+VENDOR_PATH=/var/www/vendor
 
 # Vite
 VITE_DEV_SERVER=http://localhost:5173
@@ -439,45 +451,36 @@ else
   warn "Composer not found. Run manually: composer install"
 fi
 
-if command -v npm &>/dev/null; then
-  info "Installing npm dependencies (Vite, etc.)..."
-  (cd "$ROOT_DIR" && npm install --silent 2>/dev/null)
-  success "npm dependencies installed"
+if command -v "$PM" &>/dev/null; then
+  info "Installing dependencies via ${BOLD}$PM${NC}..."
+  (cd "$ROOT_DIR" && "$PM" install --silent 2>/dev/null) || (cd "$ROOT_DIR" && "$PM" install 2>/dev/null)
+  success "Dependencies installed ($PM)"
 else
-  warn "npm not found. Run manually: npm install"
+  warn "$PM not found. Run manually: $PM install"
 fi
 
 # ── Docker — start containers ──
-if [ "$USE_DOCKER" = "y" ]; then
-  # Check again in case Docker was stopped between questions and now
-  if ! docker info &>/dev/null 2>&1; then
-    error "Docker daemon is not running. Please start Docker Desktop and re-run setup."
-    exit 1
-  fi
+if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" ps --status running 2>/dev/null | grep -q "wordpress"; then
+  success "Docker containers already running"
+else
+  info "Starting Docker containers..."
+  (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" up -d)
+  success "Docker containers started"
+fi
 
-  # Check if containers are already running
-  if docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" ps --status running 2>/dev/null | grep -q "wordpress"; then
-    success "Docker containers already running"
-  else
-    info "Starting Docker containers..."
-    (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" up -d)
-    success "Docker containers started"
+info "Waiting for WordPress to be ready..."
+MAX_WAIT=60
+ELAPSED=0
+while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WP_PORT" | grep -q "200\|302"; do
+  sleep 2
+  ELAPSED=$((ELAPSED + 2))
+  if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+    warn "WordPress not responding yet. It may still be starting up."
+    break
   fi
-
-  info "Waiting for WordPress to be ready..."
-  MAX_WAIT=60
-  ELAPSED=0
-  while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WP_PORT" | grep -q "200\|302"; do
-    sleep 2
-    ELAPSED=$((ELAPSED + 2))
-    if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-      warn "WordPress not responding yet. It may still be starting up."
-      break
-    fi
-  done
-  if [ "$ELAPSED" -lt "$MAX_WAIT" ]; then
-    success "WordPress is running"
-  fi
+done
+if [ "$ELAPSED" -lt "$MAX_WAIT" ]; then
+  success "WordPress is running"
 fi
 
 # ── Initial sync ──
@@ -485,20 +488,18 @@ info "Running initial file sync..."
 (cd "$ROOT_DIR" && node bin/sync.js)
 success "Files synced to theme directory"
 
-# ── WordPress cleanup & theme activation (WP-CLI) ──
-HAS_WP_CLI="n"
+# ── WordPress configuration (WP-CLI) ──
 DOCKER_COMPOSE_CMD="docker compose -f $ROOT_DIR/docker/docker-compose.yml --env-file $ENV_FILE"
 
-# Wrapper function for WP-CLI (avoids quoting issues with variable-as-command)
+# Wrapper function for WP-CLI
 run_wp() {
-  if [ "$USE_DOCKER" = "y" ]; then
-    $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
-  else
-    wp --path="$(echo "$THEME_DIR" | sed 's|/wp-content/themes/.*||')" "$@"
-  fi
+  $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
 }
 
-if [ "$USE_DOCKER" = "y" ]; then
+if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
+  # ── Automatic setup ──
+  HAS_WP_CLI="n"
+
   if $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root --info &>/dev/null 2>&1; then
     HAS_WP_CLI="y"
   else
@@ -508,65 +509,93 @@ if [ "$USE_DOCKER" = "y" ]; then
     HAS_WP_CLI="y" || \
     warn "Could not install WP-CLI in Docker container."
   fi
-elif command -v wp &>/dev/null; then
-  HAS_WP_CLI="y"
-fi
 
-if [ "$HAS_WP_CLI" = "y" ]; then
-  info "Configuring WordPress..."
+  if [ "$HAS_WP_CLI" = "y" ]; then
+    info "Configuring WordPress..."
 
-  # Install WordPress if not already installed (fresh DB = install screen)
-  if ! run_wp core is-installed 2>/dev/null; then
-    info "Installing WordPress..."
-    run_wp core install \
-      --url="http://localhost:$WP_PORT" \
-      --title="$PROJECT_NAME" \
-      --admin_user="$WP_ADMIN_USER" \
-      --admin_password="$WP_ADMIN_PASSWORD" \
-      --admin_email="$WP_ADMIN_EMAIL" \
-      --locale="$WP_LOCALE" \
-      --skip-email 2>/dev/null && \
-      success "WordPress installed (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})" || \
-      warn "Could not install WordPress automatically"
+    # Install WordPress if not already installed
+    if ! run_wp core is-installed 2>/dev/null; then
+
+      if [ -n "${IMPORT_DUMP:-}" ] && [ -f "${IMPORT_DUMP:-}" ]; then
+        info "Importing database from $(basename "$IMPORT_DUMP")..."
+        $DOCKER_COMPOSE_CMD exec -T db sh -c \
+          'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" 2>/dev/null' \
+          < "$IMPORT_DUMP" && \
+          success "Database imported" || \
+          { warn "Could not import database. Starting fresh."; IMPORT_DUMP=""; }
+      fi
+
+      if [ -n "${IMPORT_DUMP:-}" ] && [ -f "${IMPORT_DUMP:-}" ]; then
+        # DB was imported — detect old URL and search-replace
+        OLD_URL=$(run_wp option get siteurl 2>/dev/null || true)
+        NEW_URL="http://localhost:$WP_PORT"
+
+        if [ -n "$OLD_URL" ] && [ "$OLD_URL" != "$NEW_URL" ]; then
+          info "Replacing URLs: $OLD_URL → $NEW_URL"
+          run_wp search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid 2>/dev/null && \
+            success "URLs updated" || warn "Could not update URLs"
+        fi
+
+        run_wp option update blogname "$PROJECT_NAME" 2>/dev/null || true
+        run_wp user update 1 --user_pass="$WP_ADMIN_PASSWORD" --user_login="$WP_ADMIN_USER" --user_email="$WP_ADMIN_EMAIL" 2>/dev/null || true
+        run_wp cache flush 2>/dev/null || true
+        run_wp rewrite flush 2>/dev/null || true
+
+        success "WordPress restored from dump (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})"
+      else
+        # Fresh install
+        info "Installing WordPress..."
+        run_wp core install \
+          --url="http://localhost:$WP_PORT" \
+          --title="$PROJECT_NAME" \
+          --admin_user="$WP_ADMIN_USER" \
+          --admin_password="$WP_ADMIN_PASSWORD" \
+          --admin_email="$WP_ADMIN_EMAIL" \
+          --locale="$WP_LOCALE" \
+          --skip-email 2>/dev/null && \
+          success "WordPress installed (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})" || \
+          warn "Could not install WordPress automatically"
+      fi
+    else
+      run_wp option update blogname "$PROJECT_NAME" 2>/dev/null && \
+        success "Site title set to '$PROJECT_NAME'" || true
+    fi
+
+    # Activate our theme
+    run_wp theme activate "$PROJECT_NAME" 2>/dev/null && \
+      success "Theme '$PROJECT_NAME' activated" || \
+      warn "Could not activate theme"
+
+    # Clean defaults (if requested)
+    if [ "${WP_CLEAN_DEFAULTS:-y}" = "y" ]; then
+      run_wp plugin delete hello 2>/dev/null && success "Removed Hello Dolly" || true
+      run_wp plugin delete akismet 2>/dev/null && success "Removed Akismet" || true
+
+      for theme in twentytwentythree twentytwentyfour twentytwentyfive; do
+        run_wp theme delete "$theme" 2>/dev/null && success "Removed $theme" || true
+      done
+
+      run_wp post delete 1 --force 2>/dev/null && success "Removed sample post" || true
+      run_wp post delete 2 --force 2>/dev/null && success "Removed sample page" || true
+      run_wp comment delete 1 --force 2>/dev/null && success "Removed sample comment" || true
+    fi
+
+    # Set pretty permalinks
+    run_wp rewrite structure '/%postname%/' 2>/dev/null && \
+      success "Permalinks set to /%postname%/" || true
+
+    # Set timezone
+    run_wp option update timezone_string "Europe/Paris" 2>/dev/null && \
+      success "Timezone set to Europe/Paris" || true
+
   else
-    # WP already installed — just update the title
-    run_wp option update blogname "$PROJECT_NAME" 2>/dev/null && \
-      success "Site title set to '$PROJECT_NAME'" || true
+    warn "WP-CLI not available. Configure WordPress manually at http://localhost:$WP_PORT"
   fi
 
-  # Activate our theme
-  run_wp theme activate "$PROJECT_NAME" 2>/dev/null && \
-    success "Theme '$PROJECT_NAME' activated" || \
-    warn "Could not activate theme"
-
-  # Delete default plugins
-  run_wp plugin delete hello 2>/dev/null && success "Removed Hello Dolly" || true
-  run_wp plugin delete akismet 2>/dev/null && success "Removed Akismet" || true
-
-  # Delete default themes (keep ours)
-  for theme in twentytwentythree twentytwentyfour twentytwentyfive; do
-    run_wp theme delete "$theme" 2>/dev/null && success "Removed $theme" || true
-  done
-
-  # Delete sample content
-  run_wp post delete 1 --force 2>/dev/null && success "Removed sample post" || true
-  run_wp post delete 2 --force 2>/dev/null && success "Removed sample page" || true
-  run_wp comment delete 1 --force 2>/dev/null && success "Removed sample comment" || true
-
-  # Set pretty permalinks
-  run_wp rewrite structure '/%postname%/' 2>/dev/null && \
-    success "Permalinks set to /%postname%/" || true
-
-  # Set timezone
-  run_wp option update timezone_string "Europe/Paris" 2>/dev/null && \
-    success "Timezone set to Europe/Paris" || true
-
 else
-  warn "WP-CLI not available. You can clean up WordPress manually or install WP-CLI."
-  info "  → Delete plugins: Hello Dolly, Akismet"
-  info "  → Delete unused default themes"
-  info "  → Activate theme: $PROJECT_NAME"
-  info "  → Set permalinks to /%postname%/"
+  # ── Vanilla mode ──
+  info "Vanilla mode — skipping WordPress configuration."
+  info "Open ${BOLD}http://localhost:$WP_PORT${NC} to complete the WordPress installation."
 fi
 
 # ──────────────────────────────────────────────
@@ -584,13 +613,11 @@ echo -e "${BOLD}╚════════════════════�
 echo ""
 echo -e "  ${BOLD}Theme:${NC}       $PROJECT_NAME"
 echo -e "  ${BOLD}Theme dir:${NC}   $THEME_DIR"
-if [ "$USE_DOCKER" = "y" ]; then
 echo -e "  ${BOLD}WordPress:${NC}   http://localhost:$WP_PORT"
+if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
 echo -e "  ${BOLD}Admin:${NC}       http://localhost:$WP_PORT/wp-admin  (${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})"
-echo -e "  ${BOLD}phpMyAdmin:${NC}  http://localhost:$PMA_PORT"
-else
-echo -e "  ${BOLD}WordPress:${NC}   $WP_HOME"
 fi
+echo -e "  ${BOLD}phpMyAdmin:${NC}  http://localhost:$PMA_PORT"
 echo ""
 echo -e "  ${BOLD}Commands:${NC}"
 echo -e "    ${CYAN}npm run dev${NC}    Start development (Vite + file sync)"
@@ -599,8 +626,5 @@ echo -e "    ${CYAN}npm run stop${NC}   Stop Docker containers"
 echo -e "    ${CYAN}npm run reset${NC}  Clean everything (Docker volumes + public/ + .env)"
 echo ""
 
-# ── Optionally launch dev server ──
-ask_yn "Launch development server now?" "y" LAUNCH_DEV
-if [ "$LAUNCH_DEV" = "y" ]; then
-  exec npm run dev
-fi
+# ── Launch dev server ──
+exec npm run dev

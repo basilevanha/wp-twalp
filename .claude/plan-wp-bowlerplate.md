@@ -104,7 +104,7 @@ wp-boilerplate/
 | **Timber v2.3.3** | Templating Twig pour WordPress (via Composer)               | ✅     |
 | **ACF**       | Custom fields, JSON sync versionné dans git                      | ✅ config prête, plugin à installer dans WP |
 | **WP-CLI**    | Utilisé par le setup script pour configurer WP                   | ✅     |
-| **Docker**    | Option d'env local (alternative à DevKinsta)                     | ✅     |
+| **Docker**    | Environnement local (WordPress + MySQL + phpMyAdmin)             | ✅     |
 
 ### Pourquoi SCSS plutôt que Tailwind ?
 
@@ -184,31 +184,30 @@ Script interactif en 4 étapes, résilient (reprend après échec) :
 > via WP-CLI, et question "Lancer dev ?" à la fin.
 
 1. **Nom du projet** : demande un slug (sanitisé automatiquement : lowercase, tirets) → utilisé comme nom de thème, text domain, et `COMPOSE_PROJECT_NAME`
-2. **Environnement** : choix entre Docker / DevKinsta / WP existant
-   - Docker : vérifie que Docker daemon tourne, demande credentials DB, configure `VENDOR_PATH=/var/www/vendor`, `WP_PORT`, `PMA_PORT`
-   - DevKinsta : demande le chemin du site → configure `THEME_DIR` avec chemin absolu, `VENDOR_PATH` vide
-   - WP existant : demande le chemin WP → configure `THEME_DIR`, `VENDOR_PATH` vide
-3. **Features** : "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require dans `functions.php`
+2. **Docker** : détecte volumes existants, trouve des ports libres, demande credentials DB, propose d'importer un dump SQL existant
+3. **WordPress** : choix entre setup automatique (admin, langue, clean defaults) ou vanilla (config manuelle via navigateur)
+4. **Features** : "Utilises-tu ACF ?" → si non, supprime `inc/acf.php`, `src/acf-json/`, retire le require dans `functions.php`
 4. **Configuration & Setup** :
    - Génère `.env` (avec confirmation si existe déjà) incluant `COMPOSE_PROJECT_NAME`, `WP_PORT`, `PMA_PORT`
    - Met à jour `Theme Name` et `Text Domain` dans `style.css`
    - Remplace le text domain `'starter-theme'` par le slug du projet dans tous les PHP/Twig
-   - `composer install` + `npm install`
+   - `composer install` + `{pm} install` (package manager auto-détecté)
    - Docker : démarre les containers (scopés par projet), attend que WP réponde
    - `node bin/sync.js` (sync initial)
-   - WP-CLI (installé automatiquement dans le container Docker si absent) :
+   - Si mode automatique — WP-CLI (installé automatiquement dans le container Docker si absent) :
+     - Installe WordPress (ou importe un dump + search-replace URLs)
      - Configure le titre du site (`blogname`)
      - Active le thème
-     - Supprime Hello Dolly, Akismet
-     - Supprime twentytwentythree/four/five
-     - Supprime sample post, page, commentaire
+     - Supprime Hello Dolly, Akismet (si clean defaults)
+     - Supprime twentytwentythree/four/five (si clean defaults)
+     - Supprime sample post, page, commentaire (si clean defaults)
      - Permalinks `/%postname%/`
      - Timezone `Europe/Paris`
-   - Fallback : instructions manuelles si WP-CLI non disponible
-   - **Propose de lancer `npm run dev`** directement
+   - Si mode vanilla — aucune config WP-CLI, l'utilisateur configure via le navigateur
+   - **Lance `npm run dev` directement** à la fin
 
 **Résilience :**
-- Pre-flight checks : vérifie node, npm (fatal), composer (warning), Docker (si choisi)
+- Pre-flight checks : vérifie node, package manager (fatal), composer (warning), Docker
 - State file `.setup-state` : sauvegarde les réponses après les questions. Si le script échoue, on relance et il propose de reprendre avec les réponses sauvées
 - Supprimé automatiquement en cas de succès
 
@@ -223,19 +222,7 @@ Script interactif en 4 étapes, résilient (reprend après échec) :
 
 ---
 
-## Compatibilité DevKinsta ✅ (config prête, non testé)
-
-DevKinsta stocke les sites dans `~/DevKinsta/public/{site-name}/`. Le boilerplate s'y connecte simplement via la variable `THEME_DIR` dans `.env` :
-
-```
-THEME_DIR=/Users/basile/DevKinsta/public/mon-site/wp-content/themes/mon-theme
-```
-
-Le build system copie dans ce dossier, DevKinsta sert le site. Aucune modification de DevKinsta nécessaire.
-
----
-
-## Docker (alternative à DevKinsta) ✅
+## Docker ✅
 
 `docker/docker-compose.yml` avec :
 
@@ -322,7 +309,7 @@ npm-debug.log*
 ### Phase 4 : CLI Setup ✅ TERMINÉE
 
 - [x] `bin/setup.sh` — script interactif (nom du projet, slug auto-sanitisé)
-- [x] Support DevKinsta / Docker / WP existant (3 modes avec config adaptée)
+- [x] Support Docker (docker-compose inclus)
 - [x] Questions fonctionnelles (ACF oui/non → supprime acf.php, acf-json/, require dans functions.php)
 - [x] Génération `.env` dynamique selon l'environnement choisi
 - [x] Mise à jour automatique du Theme Name dans style.css
@@ -364,9 +351,9 @@ npm-debug.log*
 - [x] `docker/docker-compose.yml` (WordPress + MySQL 8 + phpMyAdmin)
 - [x] Test : containers lancés, WordPress installé sur localhost:8080
 
-### Phase 6 : Documentation ⏳ À FAIRE
+### Phase 6 : Documentation ✅ TERMINÉE
 
-- [ ] `README.md` avec instructions complètes
+- [x] `README.md` avec instructions complètes (quick start, structure, commands, DB management, templates, SCSS, résilience, production)
 
 ### Phase 7 : DX — Expérience développeur ✅ TERMINÉE
 
@@ -389,6 +376,36 @@ npm-debug.log*
 - [x] `dev.js` : si projet Docker, vérifie si containers tournent → les démarre automatiquement si down
 - [x] `dev.js` : attend que WordPress soit ready avant de lancer sync + Vite
 
+### Phase 8 : Database management ✅ TERMINÉE
+
+- [x] `npm run dump` — exporte la DB dans `database/dump-YYYYMMDD-HHMMSS.sql` via `mysqldump` (container `db`)
+- [x] `npm run import` — `bin/import.sh` : liste interactive des dumps, import via `mysql` CLI, `wp search-replace` auto pour les URLs, flush cache/rewrite
+- [x] Import au setup — si des dumps existent dans `database/`, le setup propose un menu (choisir un dump ou DB vierge)
+- [x] Après import : détection auto de l'ancienne URL, `wp search-replace --all-tables --skip-columns=guid` (serialization-safe)
+- [x] `wp cache flush` + `wp rewrite flush` après import
+- [x] Dumps gitignorés (`database/*.sql` dans `.gitignore`)
+
+### Phase 9 : UX setup + package manager support ✅ TERMINÉE
+
+**Setup simplifié :**
+- [x] Supprimé les options DevKinsta et Existing WP — Docker uniquement
+- [x] Setup en 4 étapes : Project → Docker → WordPress → Features
+- [x] Mode vanilla : skip WP-CLI, config manuelle via navigateur
+- [x] Question "Clean default themes & plugins?" (optionnel)
+- [x] Dev server lancé automatiquement à la fin du setup (plus de question)
+- [x] Pre-flight checks : Docker vérifié avant toute question (pas de perte de réponses)
+
+**Reset avec confirmation :**
+- [x] `bin/reset.sh` : 3 choix (reset / dump+reset / cancel), défaut = cancel
+- [x] Supprime containers + volumes + public + .env + node_modules + vendor + lock files
+
+**Package manager auto-détecté :**
+- [x] Détection via `npm_config_user_agent` (priorité) + lock file (fallback) — approche create-next-app/create-vite
+- [x] `setup.sh` : installe via le PM détecté, pre-flight check adapté
+- [x] `dev.js` : lance Vite via le bon exec (`npx`/`pnpm exec`/`yarn exec`/`bunx`)
+- [x] `reset.sh` : supprime tous les lock files possibles
+- [x] Supporte npm, pnpm, yarn, bun
+
 ---
 
 ## Vérification / Test
@@ -409,16 +426,21 @@ npm-debug.log*
 14. ✅ **Port Vite fallback :** port 5173 occupé → Vite prend 5174, banner affiche le bon port, `dist/hot` mis à jour
 15. ✅ **Docker auto-start :** `npm run dev` avec Docker down → démarre automatiquement les containers, attend WP
 16. ✅ **Pas de .env :** `npm run dev` sans `.env` → erreur claire "Run npm run setup first"
-17. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
-18. ⏳ **DevKinsta :** tester en changeant `THEME_DIR` dans `.env`
+17. ✅ **npm run dump :** exporte la DB en fichier SQL daté
+18. ✅ **npm run import :** liste les dumps, importe, search-replace URLs
+19. ✅ **Import au setup :** propose les dumps existants lors d'un nouveau setup
+20. ✅ **Vanilla mode :** setup sans WP-CLI, config WordPress manuelle via navigateur
+21. ✅ **Clean defaults optionnel :** question "Clean default themes & plugins?" au setup
+22. ✅ **Reset avec confirmation :** 3 choix (reset / dump+reset / cancel)
+23. ✅ **Package manager auto-détecté :** npm/pnpm/yarn/bun via `npm_config_user_agent` + lock file fallback
+24. ⏳ **ACF :** installer ACF → créer un field group → vérifier que le JSON arrive dans `src/acf-json/`
 
 ---
 
 ## Points d'attention
 
-- **Autoload Composer :** ✅ Résolu via `autoload-path.php` généré par `sync.js`. En dev Docker, pointe vers `/var/www/vendor/autoload.php` (via `VENDOR_PATH` dans `.env`). En dev local/DevKinsta, pointe vers le chemin absolu du repo. En prod, `vendor/` est copié dans le thème.
+- **Autoload Composer :** ✅ Résolu via `autoload-path.php` généré par `sync.js`. En dev Docker, pointe vers `/var/www/vendor/autoload.php` (via `VENDOR_PATH` dans `.env`). En prod, `vendor/` est copié dans le thème.
 - **StarterSite autoload :** ✅ L'autoload PSR-4 de Composer contient des chemins absolus locaux qui ne fonctionnent pas dans Docker. Résolu par un `require_once` explicite dans `functions.php` plutôt que de dépendre de l'autoloader pour les classes du thème.
-- **HTTPS DevKinsta :** Si DevKinsta sert en HTTPS, Vite doit aussi être en HTTPS (configurable dans `vite.config.js`).
 - **Déploiement :** `npm run build` produit un thème autonome. Pour la prod, `vendor/` (Timber) est inclus automatiquement par `sync.js --production`.
 
 ---
@@ -444,3 +466,12 @@ npm-debug.log*
 17. **Port Vite dynamique** : `strictPort: false` dans vite.config.js, `dev.js` détecte le port réel depuis stdout de Vite et réécrit `dist/hot` — plus de crash si le port 5173 est occupé
 18. **Docker auto-start** : `dev.js` vérifie `.env`, démarre les containers Docker automatiquement si down, attend que WordPress soit ready
 19. **Cleanup dist/hot** : `dev.js` supprime `dist/hot` au Ctrl+C pour que PHP retombe en mode production
+20. **Database management** : `npm run dump` (export daté), `npm run import` (import interactif + search-replace), import au setup (choix dump ou DB vierge)
+21. **WP core install au setup** : questions admin (user/password/email/langue), installation WordPress automatique via WP-CLI, détection DB existante vs fresh
+22. **DB credentials dérivées** : `DB_NAME` = `wp_{slug}`, `DB_USER` = idem, `DB_PASSWORD` = random 16 chars — plus de credentials partagées entre projets
+23. **Setup Docker-only** : supprimé les options DevKinsta et Existing WP — simplifié en 4 étapes (Project → Docker → WordPress → Features)
+24. **Mode vanilla** : le setup propose un choix entre setup automatique (WP-CLI) et vanilla (config manuelle via navigateur)
+25. **Clean defaults optionnel** : question "Clean default themes & plugins?" au lieu de toujours nettoyer
+26. **Dev auto-lancé** : le setup lance `npm run dev` directement à la fin sans demander
+27. **Reset avec confirmation** : `bin/reset.sh` avec 3 choix (reset / dump+reset / cancel) au lieu d'un `rm -rf` direct
+28. **Package manager auto-détecté** : supporte npm/pnpm/yarn/bun via `npm_config_user_agent` (priorité) + lock file (fallback) — même approche que create-next-app et create-vite

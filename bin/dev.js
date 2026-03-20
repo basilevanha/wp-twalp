@@ -18,6 +18,27 @@ import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { existsSync, writeFileSync, unlinkSync, mkdirSync } from "fs";
 
+// ──────────────────────────────────────────────
+// Detect package manager (same approach as create-next-app / create-vite)
+// Priority: npm_config_user_agent → lock file → npm
+// ──────────────────────────────────────────────
+function detectPM() {
+    const ua = process.env.npm_config_user_agent || "";
+    if (ua.startsWith("pnpm")) return { name: "pnpm", exec: "pnpm", execArgs: ["exec", "vite"] };
+    if (ua.startsWith("yarn")) return { name: "yarn", exec: "yarn", execArgs: ["exec", "vite"] };
+    if (ua.startsWith("bun"))  return { name: "bun", exec: "bunx", execArgs: ["vite"] };
+    if (ua.startsWith("npm"))  return { name: "npm", exec: "npx", execArgs: ["vite"] };
+
+    // Fallback: lock file detection
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    if (existsSync(resolve(root, "pnpm-lock.yaml"))) return { name: "pnpm", exec: "pnpm", execArgs: ["exec", "vite"] };
+    if (existsSync(resolve(root, "yarn.lock"))) return { name: "yarn", exec: "yarn", execArgs: ["exec", "vite"] };
+    if (existsSync(resolve(root, "bun.lockb")) || existsSync(resolve(root, "bun.lock"))) return { name: "bun", exec: "bunx", execArgs: ["vite"] };
+    return { name: "npm", exec: "npx", execArgs: ["vite"] };
+}
+
+const PM = detectPM();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, "..");
@@ -202,7 +223,7 @@ syncProc.on("exit", (code) => {
 // ──────────────────────────────────────────────
 // Launch Vite
 // ──────────────────────────────────────────────
-const viteProc = spawn("npx", ["vite"], {
+const viteProc = spawn(PM.exec, PM.execArgs, {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,

@@ -10,26 +10,6 @@
 
 ---
 
-## Import de dump DB au setup
-
-**Problème :** Après un `npm run reset` ou un clone frais, on repart d'une DB vierge. Le contenu WordPress (pages, ACF, menus) est perdu.
-
-**Solutions :**
-1. Au setup, si des dumps existent dans `database/`, proposer un menu : choisir un dump ou DB vierge.
-2. Après import : `wp search-replace 'ancienne-url' 'nouvelle-url' --all-tables --skip-columns=guid` pour corriger les URLs.
-3. `wp cache flush` + `wp rewrite flush` pour finaliser.
-4. Importer via `mysql` CLI (container `db`), pas `wp db import` (WP pas encore bootstrappé à ce stade).
-
----
-
-## npm run import (standalone)
-
-**Problème :** Pouvoir importer un dump en dehors du setup, sur un projet déjà configuré.
-
-**Solutions :**
-1. Script qui liste les dumps dans `database/`, propose de choisir ou accepte un fichier en argument.
-2. Même flow : import MySQL + `wp search-replace` + flush.
-
 ---
 
 ## Commande npx create-wp-boilerplate
