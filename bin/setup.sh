@@ -61,7 +61,7 @@ if [ -f "$STATE_FILE" ]; then
   source "$STATE_FILE"
   echo ""
   info "Saved answers:"
-  echo -e "      Project:   ${BOLD}$PROJECT_NAME${NC}"
+  echo -e "      Site:      ${BOLD}$SITE_TITLE${NC} ${DIM}($PROJECT_NAME)${NC}"
   echo -e "      WP setup:  ${BOLD}$([ "${WP_SETUP_MODE:-1}" = "1" ] && echo "Automatic ($WP_ADMIN_USER)" || echo "Vanilla")${NC}"
   echo -e "      ACF:       ${BOLD}$USE_ACF${NC}"
   echo ""

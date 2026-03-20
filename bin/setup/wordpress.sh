@@ -47,7 +47,7 @@ if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
             success "URLs updated" || warn "Could not update URLs"
         fi
 
-        run_wp option update blogname "$PROJECT_NAME" 2>/dev/null || true
+        run_wp option update blogname "$SITE_TITLE" 2>/dev/null || true
         run_wp user update 1 --user_pass="$WP_ADMIN_PASSWORD" --user_login="$WP_ADMIN_USER" --user_email="$WP_ADMIN_EMAIL" 2>/dev/null || true
         run_wp cache flush 2>/dev/null || true
         run_wp rewrite flush 2>/dev/null || true
@@ -58,7 +58,7 @@ if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
         info "Installing WordPress..."
         run_wp core install \
           --url="http://localhost:$WP_PORT" \
-          --title="$PROJECT_NAME" \
+          --title="$SITE_TITLE" \
           --admin_user="$WP_ADMIN_USER" \
           --admin_password="$WP_ADMIN_PASSWORD" \
           --admin_email="$WP_ADMIN_EMAIL" \
@@ -68,7 +68,7 @@ if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
           warn "Could not install WordPress automatically"
       fi
     else
-      run_wp option update blogname "$PROJECT_NAME" 2>/dev/null && \
+      run_wp option update blogname "$SITE_TITLE" 2>/dev/null && \
         success "Site title set to '$PROJECT_NAME'" || true
     fi
 

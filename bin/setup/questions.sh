@@ -8,7 +8,11 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   header "1/3 — Project"
 
-  ask "Project name (slug)" "starter-theme" PROJECT_NAME
+  ask "Site name" "My Site" SITE_TITLE
+
+  # Derive slug from site name
+  DEFAULT_SLUG=$(echo "$SITE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
+  ask "Project slug" "$DEFAULT_SLUG" PROJECT_NAME
   PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
 
   THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
@@ -141,7 +145,7 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # Save state for resume
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   {
-    for _var in PROJECT_NAME THEME_DIR WP_HOME WP_PORT PMA_PORT DB_NAME DB_USER DB_PASSWORD \
+    for _var in SITE_TITLE PROJECT_NAME THEME_DIR WP_HOME WP_PORT PMA_PORT DB_NAME DB_USER DB_PASSWORD \
                 WP_SETUP_MODE WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL WP_LOCALE \
                 WP_CLEAN_DEFAULTS WP_HOMEPAGE WP_HOMEPAGE_TITLE USE_ACF IMPORT_DUMP; do
       declare -p "$_var" 2>/dev/null || true

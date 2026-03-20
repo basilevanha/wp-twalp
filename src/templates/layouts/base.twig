@@ -6,7 +6,7 @@
 
 	<body class="{{ body_class }}">
 		{{ function('wp_body_open')|raw }}
-		<a href="#content">{{ __('Skip to content', 'starter-theme') }}</a>
+		<a class="sr-only focus:not-sr-only" href="#content">{{ __('Skip to content', 'starter-theme') }}</a>
 
 		<header>
 			{% block header %}
