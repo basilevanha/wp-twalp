@@ -1,2 +1,139 @@
 @import "tailwindcss";
 @source "../templates/**/*.twig";
+
+/* ========================================
+   THEME MAPPING
+   Map CSS custom properties to Tailwind classes
+   ex: --color-primary => text-primary, bg-primary
+   ======================================== */
+
+@theme inline {
+    --radius-sm: 0.25rem; /* 4px */
+    --radius-DEFAULT: 0.375rem; /* 6px */
+    --radius-md: 0.5rem; /* 8px */
+    --radius-lg: 0.75rem; /* 12px */
+    --radius-xl: 1rem; /* 16px */
+    --radius-2xl: 1.5rem; /* 24px */
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+}
+
+/* ========================================
+   DESIGN TOKENS — LIGHT (default)
+   ======================================== */
+
+:root {
+    /* Base */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+
+    /* Primary — main brand color */
+    --primary: oklch(0.56 0.28 297.22);
+    --primary-foreground: oklch(0.985 0 0);
+
+    /* Secondary */
+    --secondary: oklch(0.95 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+
+    /* Accent */
+    --accent: oklch(0.93 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+
+    /* Muted — disabled / placeholder */
+    --muted: oklch(0.92 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+
+    /* Card */
+    --card: oklch(0.985 0 0);
+    --card-foreground: oklch(0.145 0 0);
+
+    /* Semantic */
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(1 0 0);
+    --success: oklch(0.577 0.245 142.5);
+    --success-foreground: oklch(1 0 0);
+    --warning: oklch(0.828 0.189 84.429);
+    --warning-foreground: oklch(0.205 0 0);
+
+    /* Borders & inputs */
+    --border: oklch(0.89 0 0);
+    --input: oklch(0.89 0 0);
+    --ring: oklch(0.708 0 0);
+}
+
+/* ========================================
+   DESIGN TOKENS — DARK
+   ======================================== */
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+
+    --secondary: oklch(0.24 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+
+    --accent: oklch(0.27 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+
+    --muted: oklch(0.27 0 0);
+    --muted-foreground: oklch(0.63 0 0);
+
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+
+    --destructive: oklch(0.65 0.245 27.325);
+    --destructive-foreground: oklch(1 0 0);
+    --success: oklch(0.65 0.245 142.5);
+    --success-foreground: oklch(1 0 0);
+    --warning: oklch(0.828 0.189 84.429);
+    --warning-foreground: oklch(0.205 0 0);
+
+    --border: oklch(0.35 0 0);
+    --input: oklch(0.27 0 0);
+    --ring: oklch(0.55 0 0);
+}
+
+/* ========================================
+   BASE LAYER
+   ======================================== */
+
+@layer base {
+    * {
+        border-color: var(--color-border);
+        outline-color: color-mix(in oklch, var(--color-ring) 50%, transparent);
+    }
+    body {
+        background-color: var(--color-background);
+        color: var(--color-foreground);
+    }
+}

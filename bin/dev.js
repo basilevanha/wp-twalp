@@ -12,7 +12,7 @@
  * Usage: node bin/dev.js (or npm run dev)
  */
 
-import { spawn, execSync } from "child_process";
+import { spawn, exec, execSync } from "child_process";
 import { resolve, dirname } from "path";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -286,6 +286,11 @@ viteProc.on("exit", (code) => {
 // ──────────────────────────────────────────────
 // Banner
 // ──────────────────────────────────────────────
+function openBrowser(url) {
+    const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+    exec(`${cmd} ${url}`);
+}
+
 function showBanner() {
     const wpUrl = WP_HOME;
     const viteUrl = `http://localhost:${vitePort}`;
@@ -300,7 +305,6 @@ function showBanner() {
     console.log(`${BOLD}║${NC}  ${DIM}phpMyAdmin${NC} :  ${pmaUrl.padEnd(26)}${BOLD}║${NC}`);
     console.log(`${BOLD}╚══════════════════════════════════════════╝${NC}`);
     console.log("");
-    console.log(`  Ouvrez ${BOLD}${wpUrl}${NC} dans votre navigateur.`);
     console.log(`  Vite gère le HMR (hot reload CSS/JS automatique).`);
     if (vitePort !== "5173") {
         console.log(`  ${YELLOW}Note: port 5173 occupé, Vite utilise le port ${vitePort}.${NC}`);
@@ -309,4 +313,7 @@ function showBanner() {
     console.log(`  ${DIM}Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.${NC}`);
     console.log(`  ${DIM}Pour tout stopper : ${PM} run stop${NC}`);
     console.log("");
+
+    // Open WordPress in the default browser
+    openBrowser(wpUrl);
 }

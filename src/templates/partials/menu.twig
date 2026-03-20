@@ -1,11 +1,8 @@
 {% if items %}
-	<ul>
+	<ul class="flex items-center gap-6">
 		{% for item in items %}
 			<li>
-				<a target="{{ item.target }}" href="{{ item.link }}">{{ item.title }}</a>
-				{% include 'partials/menu.twig' with {
-					items: item.children
-				} %}
+				<a target="{{ item.target }}" href="{{ item.link }}" class="text-sm text-muted-foreground transition-colors hover:text-foreground{{ item.current ? ' font-medium text-foreground' : '' }}">{{ item.title }}</a>
 			</li>
 		{% endfor %}
 	</ul>
