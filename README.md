@@ -1,8 +1,12 @@
-# WP Boilerplate
+# WP TWALP Boilerplate
+
+[![CI](https://github.com/basilevanha/wp-bowlerplate-tw-alpine/actions/workflows/ci.yml/badge.svg)](https://github.com/basilevanha/wp-bowlerplate-tw-alpine/actions/workflows/ci.yml)
 
 A modern WordPress development boilerplate with **Timber** (Twig), **Tailwind CSS**, **Alpine.js**, **Vite** (HMR), and **Docker** — all wired together with an interactive setup CLI.
 
 Works with **npm**, **pnpm**, **yarn**, and **bun** — auto-detected.
+
+![Setup demo](docs/demo.gif)
 
 **One command to start:**
 
@@ -16,15 +20,15 @@ WordPress installed, theme activated, dev server ready. No manual configuration.
 
 ## What's included
 
-| Tool | Role |
-|------|------|
-| **Tailwind CSS 4** | Utility-first CSS, scans `.twig` templates |
-| **Alpine.js** | Reactive UI interactions (~14 kB), declared in HTML |
-| **Vite 6** | HMR, CSS/JS compilation, bundling |
-| **Timber 2** | Twig templating for WordPress |
-| **ACF** | Custom fields with JSON sync (optional) |
-| **Docker** | WordPress + MySQL + phpMyAdmin |
-| **WP-CLI** | Automated WordPress setup |
+| Tool               | Role                                                |
+| ------------------ | --------------------------------------------------- |
+| **Tailwind CSS 4** | Utility-first CSS, scans `.twig` templates          |
+| **Alpine.js**      | Reactive UI interactions (~14 kB), declared in HTML |
+| **Vite 6**         | HMR, CSS/JS compilation, bundling                   |
+| **Timber 2**       | Twig templating for WordPress                       |
+| **ACF**            | Custom fields with JSON sync (optional)             |
+| **Docker**         | WordPress + MySQL + phpMyAdmin                      |
+| **WP-CLI**         | Automated WordPress setup                           |
 
 ## Project structure
 
@@ -67,7 +71,7 @@ wp-boilerplate/
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/wp-boilerplate.git my-project
+git clone https://github.com/basilevanha/wp-bowlerplate-tw-alpine.git my-project
 cd my-project
 npm run setup
 ```
@@ -79,6 +83,7 @@ The interactive CLI walks you through 3 steps:
 3. **Plugins** — ACF (yes/no)
 
 Then it automatically:
+
 - Generates `.env`
 - Installs dependencies (Composer + your package manager)
 - Starts Docker containers
@@ -102,7 +107,7 @@ npm run dev
 ╠══════════════════════════════════════════╣
 ║  WordPress :  http://localhost:8080      ║
 ║  Vite HMR  :  http://localhost:5173      ║
-║  phpMyAdmin :  http://localhost:8081      ║
+║  phpMyAdmin :  http://localhost:8081     ║
 ╚══════════════════════════════════════════╝
 ```
 
@@ -129,21 +134,30 @@ npm run reset    # Delete everything (with confirmation + optional dump)
 Style directly in your `.twig` templates:
 
 ```twig
-<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+<button class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
   {{ __('Contact', 'my-theme') }}
 </button>
 ```
 
 Tailwind scans all `.twig` files and only outputs the CSS classes you actually use. Copy-paste components from [Flowbite](https://flowbite.com/), [HyperUI](https://www.hyperui.dev/), [DaisyUI](https://daisyui.com/), or any Tailwind component library.
 
-Custom CSS goes in `src/css/main.css`:
+### Design system
 
-```css
-@import "tailwindcss";
-@source "../templates/**/*.twig";
+The boilerplate includes a ready-to-use design system in `src/css/main.css` based on semantic color tokens:
 
-/* Custom styles below */
-```
+| Token                       | Usage                                 |
+| --------------------------- | ------------------------------------- |
+| `primary`                   | Brand color — buttons, links, accents |
+| `secondary`                 | Subtle backgrounds, secondary actions |
+| `muted`                     | Disabled states, placeholders         |
+| `destructive`               | Errors, delete actions                |
+| `success` / `warning`       | Feedback states                       |
+| `card`                      | Card backgrounds                      |
+| `border` / `input` / `ring` | Form elements, borders                |
+
+All colors use the **OKLCH** color space for perceptual uniformity. Dark theme is supported via the `.dark` class on `<html>`.
+
+Use them as Tailwind classes: `bg-primary`, `text-muted-foreground`, `border-border`, `ring-ring`, etc. To customize the palette, edit the CSS custom properties in `:root` and `.dark`.
 
 ---
 
@@ -170,13 +184,13 @@ Perfect for menus, modals, tabs, accordions — anything that would normally req
 
 `src/` is your source of truth. The sync system copies files to the WordPress theme directory:
 
-| Source | Destination |
-|--------|------------|
-| `src/theme/` | `→ public/wp-content/themes/{name}/` |
-| `src/templates/` | `→ themes/{name}/templates/` |
-| `src/fonts/` | `→ themes/{name}/assets/fonts/` |
-| `src/images/` | `→ themes/{name}/assets/images/` |
-| `src/acf-json/` | `→ themes/{name}/acf-json` (symlink) |
+| Source           | Destination                          |
+| ---------------- | ------------------------------------ |
+| `src/theme/`     | `→ public/wp-content/themes/{name}/` |
+| `src/templates/` | `→ themes/{name}/templates/`         |
+| `src/fonts/`     | `→ themes/{name}/assets/fonts/`      |
+| `src/images/`    | `→ themes/{name}/assets/images/`     |
+| `src/acf-json/`  | `→ themes/{name}/acf-json` (symlink) |
 
 In dev mode, changes are watched and synced automatically.
 
@@ -196,6 +210,7 @@ To remove ACF support, answer "no" during setup — the CLI removes all related 
 ### Docker isolation
 
 Each project gets its own:
+
 - **Container names** — prefixed with project slug (`my-site-wordpress-1`)
 - **Database volume** — `{slug}_db_data`
 - **Network** — `{slug}_default`
@@ -256,6 +271,7 @@ src/templates/
 │   ├── page.twig              # Static page
 │   ├── archive.twig           # Archive/category
 │   ├── search.twig            # Search results
+│   ├── author.twig            # Author archive
 │   ├── 404.twig               # Not found
 │   └── single-password.twig   # Password-protected post
 └── partials/
@@ -265,7 +281,8 @@ src/templates/
     ├── comment.twig           # Single comment
     ├── comment-form.twig      # Comment form
     ├── pagination.twig        # Post pagination
-    └── tease.twig             # Post teaser/card
+    ├── tease.twig             # Post teaser/card
+    └── tease-post.twig        # Post-specific teaser
 ```
 
 All UI strings are translation-ready with `{{ __('String', 'text-domain') }}`.
@@ -304,6 +321,7 @@ npm run build
 ```
 
 Produces a self-contained theme with:
+
 - Compiled and minified CSS/JS with content hashes
 - `vendor/` directory (Timber) included
 - `manifest.json` for cache-busting
@@ -313,6 +331,10 @@ Deploy the theme directory to any WordPress installation.
 
 ---
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
-MIT
+[MIT](LICENSE)

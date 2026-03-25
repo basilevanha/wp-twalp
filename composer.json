@@ -1,6 +1,6 @@
 {
-  "name": "starter/wp-boilerplate",
-  "description": "WordPress boilerplate with Timber, Vite, and ACF",
+  "name": "basilevanha/wp-boilerplate",
+  "description": "Modern WordPress boilerplate — Timber, Tailwind CSS, Alpine.js, Vite, Docker",
   "type": "project",
   "license": "MIT",
   "require": {
