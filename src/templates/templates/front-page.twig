@@ -2,69 +2,99 @@
 
 {% block content %}
 	<div
-		x-data="{
-			x: 50, y: 50,
-			tx: 50, ty: 50,
-			t: 0,
-			blob: '',
-			init() {
-				this.loop()
-			},
-			move(e) {
-				const rect = this.$el.getBoundingClientRect()
-				this.tx = ((e.clientX - rect.left) / rect.width) * 100
-				this.ty = ((e.clientY - rect.top) / rect.height) * 100
-			},
-			loop() {
-				this.x += (this.tx - this.x) * 0.04
-				this.y += (this.ty - this.y) * 0.04
-				this.t += 0.008
-				const s = Math.sin, t = this.t
-				const r1 = 40 + 10 * s(t * 1.1)
-				const r2 = 50 + 10 * s(t * 1.4 + 1)
-				const r3 = 45 + 10 * s(t * 0.9 + 2)
-				const r4 = 50 + 10 * s(t * 1.2 + 3)
-				const r5 = 55 + 10 * s(t * 1.0 + 4)
-				const r6 = 45 + 10 * s(t * 1.3 + 5)
-				const r7 = 50 + 10 * s(t * 0.8 + 6)
-				const r8 = 40 + 10 * s(t * 1.1 + 7)
-				const sc = 1 + 0.04 * s(t * 0.7)
-				this.blob = `border-radius:${r1}% ${100-r1}% ${r2}% ${100-r2}% / ${r3}% ${r4}% ${100-r4}% ${100-r3}%;transform:translate(-50%,-50%) scale(${sc})`
-				requestAnimationFrame(() => this.loop())
-			}
-		}"
-		@mousemove.throttle.16ms="move($event)"
-		class="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-secondary"
+		
+		class="relative flex flex-1 flex-col items-center overflow-hidden bg-secondary"
 	>
-		<div class="pointer-events-none absolute h-[500px] w-[500px] bg-linear-to-br from-primary/30 to-primary/10 blur-xl" :style="`left:${x}%;top:${y}%;${blob}`"></div>
+		<div class="relative z-10 mx-auto max-w-4xl px-6 py-16">
+			{# ── Hero ── #}
+			<div class="text-center">
+				<div class="relative inline-block">
+					<span
+						class="text-6xl sm:text-7xl inline-block origin-bottom animate-bounce"
+						aria-hidden="true"
+					>🎉</span>
+				</div>
 
-		<div class="relative z-10 mx-auto max-w-3xl px-6 py-24 text-center">
-			<h1 class="text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl">
-				{{ post.title }}
-			</h1>
+				<h1
+					class="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl"
+				>
+					You're all set, let's build something!
+				</h1>
 
-			{% if post.content %}
-				<div class="mt-6 text-lg leading-relaxed text-muted-foreground">
-					{{ post.content|raw }}
-				</div>
-			{% endif %}
-
-			<div class="mt-16 grid gap-8 sm:grid-cols-3">
-				<div class="rounded-2xl bg-card/70 p-6 shadow-sm backdrop-blur-sm ring-1 ring-border">
-					<p class="text-3xl font-bold text-primary">Timber</p>
-					<p class="mt-2 text-sm text-muted-foreground">Twig templates</p>
-				</div>
-				<div class="rounded-2xl bg-card/70 p-6 shadow-sm backdrop-blur-sm ring-1 ring-border">
-					<p class="text-3xl font-bold text-primary">Tailwind</p>
-					<p class="mt-2 text-sm text-muted-foreground">Utility-first CSS</p>
-				</div>
-				<div class="rounded-2xl bg-card/70 p-6 shadow-sm backdrop-blur-sm ring-1 ring-border">
-					<p class="text-3xl font-bold text-primary">Alpine</p>
-					<p class="mt-2 text-sm text-muted-foreground">Reactive interactions</p>
-				</div>
+				<p
+					class="mt-4 text-lg text-muted-foreground"
+				>
+					Your WordPress environment is set up and ready to go. Time to create something awesome.
+				</p>
 			</div>
 
-			<p class="mt-12 text-sm text-muted-foreground">{{ site.name }} &middot; {{ "now"|date("Y") }}</p>
+			{# ── Stack cards ── #}
+			<div class="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+				<a href="https://wordpress.org" target="_blank" rel="noopener" class="group flex flex-col items-center rounded-2xl bg-card/70 p-8 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://s.w.org/style/images/about/WordPress-logotype-wmark.png" alt="WordPress" class="h-16 w-16 object-contain transition group-hover:scale-110" />
+					<p class="mt-4 text-lg font-bold text-foreground">WordPress</p>
+					<p class="mt-1 text-center text-sm text-muted-foreground">Open-source CMS, content management & REST API</p>
+				</a>
+
+				<a href="https://upstatement.com/timber/" target="_blank" rel="noopener" class="group flex flex-col items-center rounded-2xl bg-card/70 p-8 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://ps.w.org/timber-library/assets/icon-256x256.png?rev=1482054" alt="Timber" class="h-16 w-16 object-contain transition group-hover:scale-110" />
+					<p class="mt-4 text-lg font-bold text-foreground">Timber</p>
+					<p class="mt-1 text-center text-sm text-muted-foreground">Twig templates, clean logic&nbsp;/&nbsp;view separation</p>
+				</a>
+
+				<a href="https://tailwindcss.com" target="_blank" rel="noopener" class="group flex flex-col items-center rounded-2xl bg-card/70 p-8 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://tailwindcss.com/_next/static/media/tailwindcss-mark.96ee6a5a.svg" alt="Tailwind CSS" class="h-16 w-16 object-contain transition group-hover:scale-110" />
+					<p class="mt-4 text-lg font-bold text-foreground">Tailwind CSS</p>
+					<p class="mt-1 text-center text-sm text-muted-foreground">Utility-first CSS, built-in design system</p>
+				</a>
+
+				<a href="https://alpinejs.dev" target="_blank" rel="noopener" class="group flex flex-col items-center rounded-2xl bg-card/70 p-8 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://avatars.githubusercontent.com/u/59030169?s=200&v=4" alt="Alpine.js" class="h-16 w-auto object-contain transition group-hover:scale-110" />
+					<p class="mt-4 text-lg font-bold text-foreground">Alpine.js</p>
+					<p class="mt-1 text-center text-sm text-muted-foreground">Lightweight reactivity, right in your HTML</p>
+				</a>
+			</div>
+
+			{# ── Tooling cards ── #}
+			<div class="mt-8 grid gap-6 sm:grid-cols-2">
+				<a href="https://vite.dev" target="_blank" rel="noopener" class="group flex items-center gap-6 rounded-2xl bg-card/70 p-6 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://vite.dev/logo.svg" alt="Vite" class="h-12 w-12 shrink-0 object-contain transition group-hover:scale-110" />
+					<div>
+						<p class="text-lg font-bold text-foreground">Vite</p>
+						<p class="text-sm text-muted-foreground">Lightning-fast builds, HMR in dev, hashed assets in production</p>
+					</div>
+				</a>
+
+				<a href="https://www.docker.com" target="_blank" rel="noopener" class="group flex items-center gap-6 rounded-2xl bg-card/70 p-6 shadow-sm backdrop-blur-sm ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+					<img src="https://www.docker.com/wp-content/uploads/2022/03/Moby-logo.png" alt="Docker" class="h-12 w-12 shrink-0 object-contain transition group-hover:scale-110" />
+					<div>
+						<p class="text-lg font-bold text-foreground">Docker</p>
+						<p class="text-sm text-muted-foreground">Full local environment: WordPress, MySQL, Mailpit</p>
+					</div>
+				</a>
+			</div>
+
+			{# ── How it works ── #}
+			<div class="mt-20">
+				<h2 class="text-center text-2xl font-bold text-foreground">How does it work?</h2>
+				<div class="mt-10 grid gap-8 sm:grid-cols-3">
+					<div class="text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">1</div>
+						<h3 class="mt-4 font-semibold text-foreground">WordPress Routing</h3>
+						<p class="mt-2 text-sm text-muted-foreground">WordPress receives the request and resolves the matching PHP template (<code class="text-xs">front-page.php</code>, <code class="text-xs">single.php</code>…)</p>
+					</div>
+					<div class="text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">2</div>
+						<h3 class="mt-4 font-semibold text-foreground">Timber Context</h3>
+						<p class="mt-2 text-sm text-muted-foreground">PHP prepares the context (posts, menus, meta…) and hands off to a Twig template</p>
+					</div>
+					<div class="text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">3</div>
+						<h3 class="mt-4 font-semibold text-foreground">Twig + Tailwind + Alpine Render</h3>
+						<p class="mt-2 text-sm text-muted-foreground">Twig generates the HTML, styled by Tailwind and made interactive by Alpine.js. Vite handles the rest.</p>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 {% endblock %}
