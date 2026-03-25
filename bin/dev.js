@@ -313,7 +313,7 @@ function showBanner() {
     }
     console.log("");
     console.log(`  ${DIM}Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.${NC}`);
-    console.log(`  ${DIM}Pour tout stopper : ${PM} run stop${NC}`);
+    console.log(`  ${DIM}Pour tout stopper : ${PM.name} run stop${NC}`);
     console.log("");
 
     // Open WordPress in the default browser
