@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 # setup/wordpress.sh — WP-CLI: install WordPress, activate theme, cleanup, homepage
 
-DOCKER_COMPOSE_CMD="docker compose -f $ROOT_DIR/docker/docker-compose.yml --env-file $ENV_FILE"
+docker_compose() {
+  docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" "$@"
+}
 
 run_wp() {
-  $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
+  docker_compose exec -T wordpress wp --allow-root "$@"
 }
 
 if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
   # ── Automatic setup ──
   HAS_WP_CLI="n"
 
-  if $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root --info &>/dev/null 2>&1; then
+  if docker_compose exec -T wordpress wp --allow-root --info &>/dev/null 2>&1; then
     HAS_WP_CLI="y"
   else
     info "Installing WP-CLI in Docker container..."
-    $DOCKER_COMPOSE_CMD exec -T wordpress bash -c \
+    docker_compose exec -T wordpress bash -c \
       "curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp" 2>/dev/null && \
     HAS_WP_CLI="y" || \
     warn "Could not install WP-CLI in Docker container."
@@ -29,7 +31,7 @@ if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
 
       if [ -n "${IMPORT_DUMP:-}" ] && [ -f "${IMPORT_DUMP:-}" ]; then
         info "Importing database from $(basename "$IMPORT_DUMP")..."
-        $DOCKER_COMPOSE_CMD exec -T db sh -c \
+        docker_compose exec -T db sh -c \
           'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" 2>/dev/null' \
           < "$IMPORT_DUMP" && \
           success "Database imported" || \

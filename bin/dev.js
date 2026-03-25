@@ -12,7 +12,7 @@
  * Usage: node bin/dev.js (or npm run dev)
  */
 
-import { spawn, exec, execSync } from "child_process";
+import { spawn, exec, execSync, execFileSync } from "child_process";
 import { resolve, dirname } from "path";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -62,7 +62,9 @@ let vitePort = "5173"; // will be updated once Vite reports its actual port
 const WP_HOME = process.env.WP_HOME || `http://localhost:${WP_PORT}`;
 const THEME_DIR = resolve(ROOT, process.env.THEME_DIR || "./public/wp-content/themes/wp-twalp");
 
-const DOCKER_COMPOSE = `docker compose -f ${resolve(ROOT, "docker/docker-compose.yml")} --env-file ${resolve(ROOT, ".env")}`;
+const DOCKER_COMPOSE_FILE = resolve(ROOT, "docker/docker-compose.yml");
+const DOCKER_ENV_FILE = resolve(ROOT, ".env");
+const DOCKER_COMPOSE_ARGS = ["compose", "-f", DOCKER_COMPOSE_FILE, "--env-file", DOCKER_ENV_FILE];
 
 // ──────────────────────────────────────────────
 // Colors
@@ -84,7 +86,7 @@ function isDockerProject() {
 
 function areContainersRunning() {
     try {
-        const output = execSync(`${DOCKER_COMPOSE} ps --status running -q`, {
+        const output = execFileSync("docker", [...DOCKER_COMPOSE_ARGS, "ps", "--status", "running", "-q"], {
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
         });
@@ -104,7 +106,7 @@ async function ensureDocker() {
 
     console.log(`${CYAN}ℹ${NC}  Starting Docker containers...`);
     try {
-        execSync(`${DOCKER_COMPOSE} up -d`, {
+        execFileSync("docker", [...DOCKER_COMPOSE_ARGS, "up", "-d"], {
             cwd: ROOT,
             stdio: "inherit",
         });

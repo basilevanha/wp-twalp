@@ -13,7 +13,9 @@ source "$SCRIPT_DIR/setup/helpers.sh"
 ENV_FILE="$ROOT_DIR/.env"
 
 PM=$(detect_pm)
-DOCKER_COMPOSE="docker compose -f $ROOT_DIR/docker/docker-compose.yml"
+docker_compose() {
+  docker compose -f "$ROOT_DIR/docker/docker-compose.yml" "$@"
+}
 
 echo ""
 warn "${BOLD}This will delete:${NC}"
@@ -39,7 +41,7 @@ case "$CHOICE" in
     if [ -f "$ENV_FILE" ]; then
       DUMP_FILE="$ROOT_DIR/database/dump-$(date +%Y%m%d-%H%M%S).sql"
       info "Exporting database..."
-      $DOCKER_COMPOSE --env-file "$ENV_FILE" exec -T db sh -c \
+      docker_compose --env-file "$ENV_FILE" exec -T db sh -c \
         'mysqldump --no-tablespaces -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" 2>/dev/null' \
         > "$DUMP_FILE" 2>/dev/null && \
         success "Database exported to $(basename "$DUMP_FILE")" || \
@@ -58,7 +60,7 @@ if [ "$DO_RESET" = "y" ]; then
   # Stop containers + remove volumes
   if [ -f "$ENV_FILE" ]; then
     info "Stopping Docker containers..."
-    $DOCKER_COMPOSE --env-file "$ENV_FILE" down -v 2>/dev/null && \
+    docker_compose --env-file "$ENV_FILE" down -v 2>/dev/null && \
       success "Containers and volumes removed" || true
   fi
 

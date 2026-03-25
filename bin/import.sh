@@ -25,10 +25,12 @@ fi
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
-DOCKER_COMPOSE_CMD="docker compose -f $ROOT_DIR/docker/docker-compose.yml --env-file $ENV_FILE"
+docker_compose() {
+  docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" "$@"
+}
 
 # Check containers are running
-if ! $DOCKER_COMPOSE_CMD ps --status running 2>/dev/null | grep -q "db"; then
+if ! docker_compose ps --status running 2>/dev/null | grep -q "db"; then
   error "Docker containers are not running. Run ${BOLD}$PM run dev${NC} first."
   exit 1
 fi
@@ -74,12 +76,12 @@ fi
 
 # WP-CLI wrapper
 run_wp() {
-  $DOCKER_COMPOSE_CMD exec -T wordpress wp --allow-root "$@"
+  docker_compose exec -T wordpress wp --allow-root "$@"
 }
 
 # Import
 info "Importing $(basename "$SQL_FILE")..."
-$DOCKER_COMPOSE_CMD exec -T db sh -c \
+docker_compose exec -T db sh -c \
   'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" 2>/dev/null' \
   < "$SQL_FILE"
 success "Database imported"
