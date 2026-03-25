@@ -9,7 +9,7 @@
 		<h1>{{ post.title }}</h1>
 
 		<p>
-			{{ __('By', 'starter-theme') }}
+			{{ __('By', 'wp-twalp') }}
 			<a href="{{ post.author.path }}">{{ post.author.name }}</a>
 			&bull;
 			<time datetime="{{ post.date|date('Y-m-d H:i:s') }}">{{ post.date }}</time>
@@ -19,14 +19,14 @@
 
 		<section>
 			{% if post.comments %}
-				<h3>{{ __('Comments', 'starter-theme') }}</h3>
+				<h3>{{ __('Comments', 'wp-twalp') }}</h3>
 				{% for cmt in post.comments %}
 					{% include 'partials/comment.twig' with { comment: cmt } %}
 				{% endfor %}
 			{% endif %}
 
 			{% if post.comment_status == 'closed' %}
-				<p>{{ __('Comments for this post are closed', 'starter-theme') }}</p>
+				<p>{{ __('Comments for this post are closed', 'wp-twalp') }}</p>
 			{% else %}
 				{% include 'partials/comment-form.twig' %}
 			{% endif %}

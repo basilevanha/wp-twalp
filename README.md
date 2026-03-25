@@ -1,6 +1,6 @@
 # WP TWALP Boilerplate
 
-[![CI](https://github.com/basilevanha/wp-bowlerplate-tw-alpine/actions/workflows/ci.yml/badge.svg)](https://github.com/basilevanha/wp-bowlerplate-tw-alpine/actions/workflows/ci.yml)
+[![CI](https://github.com/basilevanha/wp-twalp/actions/workflows/ci.yml/badge.svg)](https://github.com/basilevanha/wp-twalp/actions/workflows/ci.yml)
 
 A modern WordPress development boilerplate with **Timber** (Twig), **Tailwind CSS**, **Alpine.js**, **Vite** (HMR), and **Docker** — all wired together with an interactive setup CLI.
 
@@ -71,7 +71,7 @@ wp-boilerplate/
 ### Setup
 
 ```bash
-git clone https://github.com/basilevanha/wp-bowlerplate-tw-alpine.git my-project
+git clone https://github.com/basilevanha/wp-twalp.git my-project
 cd my-project
 npm run setup
 ```
@@ -135,7 +135,7 @@ Style directly in your `.twig` templates:
 
 ```twig
 <button class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
-  {{ __('Contact', 'my-theme') }}
+  {{ __('Contact', 'wp-twalp') }}
 </button>
 ```
 
@@ -211,7 +211,7 @@ To remove ACF support, answer "no" during setup — the CLI removes all related 
 
 Each project gets its own:
 
-- **Container names** — prefixed with project slug (`my-site-wordpress-1`)
+- **Container names** — prefixed with project slug (`wp-twalp-wordpress-1`)
 - **Database volume** — `{slug}_db_data`
 - **Network** — `{slug}_default`
 - **DB credentials** — unique name/user/password derived from slug

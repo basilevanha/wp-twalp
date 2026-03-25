@@ -1,12 +1,12 @@
 <div id="comment-{{ comment.id }}">
-	<h5>{{ comment.author.name }} {{ __('says', 'starter-theme') }}</h5>
+	<h5>{{ comment.author.name }} {{ __('says', 'wp-twalp') }}</h5>
 	<div>{{ comment.content|wpautop|raw }}</div>
 
 	<section>
 		{% include 'partials/comment-form.twig' %}
 
 		{% if comment.children %}
-			<h4>{{ __('Replies', 'starter-theme') }}</h4>
+			<h4>{{ __('Replies', 'wp-twalp') }}</h4>
 			<div>
 				{% for cmt in comment.children %}
 					{% include 'partials/comment.twig' with { comment: cmt } %}

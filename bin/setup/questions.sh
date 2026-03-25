@@ -8,7 +8,7 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   header "1/3 — Project"
 
-  ask "Site name" "My Site" SITE_TITLE
+  ask "Site name" "Wp twalp" SITE_TITLE
 
   # Derive slug from site name
   DEFAULT_SLUG=$(echo "$SITE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')

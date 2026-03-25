@@ -46,7 +46,7 @@ function vite_enqueue_assets(): void {
 		$dev_url = vite_dev_server_url();
 
 		wp_enqueue_script(
-			'starter-theme-main',
+			'wp-twalp-main',
 			$dev_url . '/js/main.js',
 			[],
 			null,
@@ -70,7 +70,7 @@ function vite_enqueue_assets(): void {
 		if (isset($manifest['js/main.js']['css'])) {
 			foreach ($manifest['js/main.js']['css'] as $index => $css_file) {
 				wp_enqueue_style(
-					'starter-theme-style-' . $index,
+					'wp-twalp-style-' . $index,
 					get_template_directory_uri() . '/dist/' . $css_file,
 					[],
 					null
@@ -81,7 +81,7 @@ function vite_enqueue_assets(): void {
 		// JS
 		if (isset($manifest['js/main.js']['file'])) {
 			wp_enqueue_script(
-				'starter-theme-main',
+				'wp-twalp-main',
 				get_template_directory_uri() . '/dist/' . $manifest['js/main.js']['file'],
 				[],
 				null,
@@ -97,7 +97,7 @@ add_action('wp_enqueue_scripts', __NAMESPACE__ . '\\vite_enqueue_assets');
  * Add type="module" to our script tag (replaces WP's default type="text/javascript").
  */
 add_filter('script_loader_tag', function ($tag, $handle) {
-	if ($handle === 'starter-theme-main') {
+	if ($handle === 'wp-twalp-main') {
 		$tag = str_replace("type='text/javascript'", '', $tag);
 		$tag = str_replace('type="text/javascript"', '', $tag);
 		return str_replace('<script ', '<script type="module" ', $tag);

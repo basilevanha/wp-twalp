@@ -6,7 +6,7 @@
 
 	<body class="{{ body_class }} flex flex-col min-h-screen">
 		{{ function('wp_body_open')|raw }}
-		<a class="sr-only focus:not-sr-only" href="#content">{{ __('Skip to content', 'my-site') }}</a>
+		<a class="sr-only focus:not-sr-only" href="#content">{{ __('Skip to content', 'wp-twalp') }}</a>
 
 		<header
 			x-data="{ scrolled: false }"
@@ -28,7 +28,7 @@
 
 		<main id="content" class="flex flex-1 pt-20">
 			{% block content %}
-				{{ __('Sorry, no content', 'my-site') }}
+				{{ __('Sorry, no content', 'wp-twalp') }}
 			{% endblock %}
 		</main>
 

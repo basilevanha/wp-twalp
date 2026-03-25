@@ -2,15 +2,15 @@
 	<nav>
 		<ul>
 			{% if (pagination.pages|first) and pagination.pages|first.current != true %}
-				<li><a href="{{ pagination.pages|first.link }}">{{ __('First', 'starter-theme') }}</a></li>
+				<li><a href="{{ pagination.pages|first.link }}">{{ __('First', 'wp-twalp') }}</a></li>
 			{% else %}
-				<li><button disabled>{{ __('First', 'starter-theme') }}</button></li>
+				<li><button disabled>{{ __('First', 'wp-twalp') }}</button></li>
 			{% endif %}
 
 			{% if pagination.prev %}
-				<li><a href="{{ pagination.prev.link }}">{{ __('Previous', 'starter-theme') }}</a></li>
+				<li><a href="{{ pagination.prev.link }}">{{ __('Previous', 'wp-twalp') }}</a></li>
 			{% else %}
-				<li><button disabled>{{ __('Previous', 'starter-theme') }}</button></li>
+				<li><button disabled>{{ __('Previous', 'wp-twalp') }}</button></li>
 			{% endif %}
 
 			{% for page in pagination.pages %}
@@ -22,15 +22,15 @@
 			{% endfor %}
 
 			{% if pagination.next %}
-				<li><a href="{{ pagination.next.link }}">{{ __('Next', 'starter-theme') }}</a></li>
+				<li><a href="{{ pagination.next.link }}">{{ __('Next', 'wp-twalp') }}</a></li>
 			{% else %}
-				<li><button disabled>{{ __('Next', 'starter-theme') }}</button></li>
+				<li><button disabled>{{ __('Next', 'wp-twalp') }}</button></li>
 			{% endif %}
 
 			{% if (pagination.pages|last) and pagination.pages|last.current != true %}
-				<li><a href="{{ pagination.pages|last.link }}">{{ __('Last', 'starter-theme') }}</a></li>
+				<li><a href="{{ pagination.pages|last.link }}">{{ __('Last', 'wp-twalp') }}</a></li>
 			{% else %}
-				<li><button disabled>{{ __('Last', 'starter-theme') }}</button></li>
+				<li><button disabled>{{ __('Last', 'wp-twalp') }}</button></li>
 			{% endif %}
 		</ul>
 	</nav>

@@ -12,7 +12,7 @@ use Timber\Timber;
 $context = Timber::context();
 
 if ( isset( $context['author'] ) ) {
-	$context['title'] = sprintf( __( 'Archive of %s', 'starter-theme' ), $context['author']->name() );
+	$context['title'] = sprintf( __( 'Archive of %s', 'wp-twalp' ), $context['author']->name() );
 }
 
 Timber::render( [ 'templates/author.twig', 'templates/archive.twig' ], $context );

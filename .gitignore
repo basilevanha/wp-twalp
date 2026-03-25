@@ -16,7 +16,7 @@ database/*.sql
 # Build artifacts
 dist/
 
-# Timber starter-theme (temporary)
+# Timber scaffold (temporary)
 _tmp_timber/
 
 # OS

@@ -6,7 +6,7 @@ import { config } from 'dotenv';
 
 config();
 
-const THEME_DIR = process.env.THEME_DIR || './public/wp-content/themes/starter-theme';
+const THEME_DIR = process.env.THEME_DIR || './public/wp-content/themes/wp-twalp';
 const resolvedThemeDir = path.resolve(__dirname, THEME_DIR);
 
 const isProduction = process.env.NODE_ENV === 'production';

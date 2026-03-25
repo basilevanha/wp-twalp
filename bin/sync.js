@@ -23,7 +23,7 @@ const ROOT = resolve(__dirname, '..');
 
 config({ path: resolve(ROOT, '.env') });
 
-const THEME_DIR = resolve(ROOT, process.env.THEME_DIR || './public/wp-content/themes/starter-theme');
+const THEME_DIR = resolve(ROOT, process.env.THEME_DIR || './public/wp-content/themes/wp-twalp');
 const isProduction = process.argv.includes('--production');
 const isWatch = process.argv.includes('--watch');
 

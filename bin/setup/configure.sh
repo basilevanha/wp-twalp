@@ -55,17 +55,17 @@ if [ -f "$STYLE_CSS" ]; then
 fi
 
 # ── Replace text domain in all PHP and Twig files ──
-if [ "$PROJECT_NAME" != "starter-theme" ]; then
-  info "Replacing text domain 'starter-theme' → '$PROJECT_NAME'..."
+if [ "$PROJECT_NAME" != "wp-twalp" ]; then
+  info "Replacing text domain 'wp-twalp' → '$PROJECT_NAME'..."
   find "$ROOT_DIR/src/theme" -name "*.php" -exec \
-    sed -i '' "s|'starter-theme'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
+    sed -i '' "s|'wp-twalp'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
   find "$ROOT_DIR/src/theme" -name "*.php" -exec \
-    sed -i "s|'starter-theme'|'$PROJECT_NAME'|g" {} +
+    sed -i "s|'wp-twalp'|'$PROJECT_NAME'|g" {} +
 
   find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
-    sed -i '' "s|'starter-theme'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
+    sed -i '' "s|'wp-twalp'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
   find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
-    sed -i "s|'starter-theme'|'$PROJECT_NAME'|g" {} +
+    sed -i "s|'wp-twalp'|'$PROJECT_NAME'|g" {} +
 
   success "Text domain updated to '$PROJECT_NAME'"
 fi

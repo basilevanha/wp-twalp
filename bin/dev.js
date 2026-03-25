@@ -60,7 +60,7 @@ const WP_PORT = process.env.WP_PORT || "8080";
 const PMA_PORT = process.env.PMA_PORT || "8081";
 let vitePort = "5173"; // will be updated once Vite reports its actual port
 const WP_HOME = process.env.WP_HOME || `http://localhost:${WP_PORT}`;
-const THEME_DIR = resolve(ROOT, process.env.THEME_DIR || "./public/wp-content/themes/starter-theme");
+const THEME_DIR = resolve(ROOT, process.env.THEME_DIR || "./public/wp-content/themes/wp-twalp");
 
 const DOCKER_COMPOSE = `docker compose -f ${resolve(ROOT, "docker/docker-compose.yml")} --env-file ${resolve(ROOT, ".env")}`;
 

@@ -1,5 +1,5 @@
 <div>
-	<h3>{{ __('Add comment', 'starter-theme') }}</h3>
+	<h3>{{ __('Add comment', 'wp-twalp') }}</h3>
 	<form method="post" action="{{ site.link ~ '/wp-comments-post.php' }}">
 		{% if user %}
 			<input type="hidden" name="email" value="{{ user.email }}" />
@@ -7,26 +7,26 @@
 			<input type="hidden" name="url" value="{{ user.link }}" />
 		{% else %}
 			<label>
-				{{ __('Email', 'starter-theme') }}<br />
+				{{ __('Email', 'wp-twalp') }}<br />
 				<input required name="email" type="email" id="email" />
 			</label>
 			<label>
-				{{ __('Name', 'starter-theme') }}<br />
+				{{ __('Name', 'wp-twalp') }}<br />
 				<input required name="author" type="text" />
 			</label>
 			<label>
-				{{ __('Website', 'starter-theme') }}<br />
+				{{ __('Website', 'wp-twalp') }}<br />
 				<input name="url" type="url" />
 			</label>
 		{% endif %}
 		<label>
-			{{ __('Comment', 'starter-theme') }}<br />
-			<textarea placeholder="{{ __('Leave a comment...', 'starter-theme') }}" name="comment" cols="60" rows="3"></textarea>
+			{{ __('Comment', 'wp-twalp') }}<br />
+			<textarea placeholder="{{ __('Leave a comment...', 'wp-twalp') }}" name="comment" cols="60" rows="3"></textarea>
 		</label>
 		<input name="comment_post_ID" value="{{ post.id }}" type="hidden" />
 		<input name="comment_parent" value="{{ comment.id|default('0') }}" type="hidden" />
-		<button type="submit" name="Submit">{{ __('Send', 'starter-theme') }}</button>
-		<button type="reset">{{ __('Cancel', 'starter-theme') }}</button>
-		<p>{{ __('Your comment will be revised by the site if needed.', 'starter-theme') }}</p>
+		<button type="submit" name="Submit">{{ __('Send', 'wp-twalp') }}</button>
+		<button type="reset">{{ __('Cancel', 'wp-twalp') }}</button>
+		<p>{{ __('Your comment will be revised by the site if needed.', 'wp-twalp') }}</p>
 	</form>
 </div>

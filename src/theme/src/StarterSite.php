@@ -63,7 +63,7 @@ class StarterSite extends Site {
 		// Register navigation menus
 		register_nav_menus(
 			[
-				'primary_navigation' => _x( 'Main menu', 'Backend - menu name', 'starter-theme' ),
+				'primary_navigation' => _x( 'Main menu', 'Backend - menu name', 'wp-twalp' ),
 			]
 		);
 

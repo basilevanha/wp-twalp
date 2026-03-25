@@ -8,5 +8,5 @@
 namespace App;
 
 add_action( 'after_setup_theme', function () {
-	load_theme_textdomain( 'starter-theme', get_template_directory() . '/languages' );
+	load_theme_textdomain( 'wp-twalp', get_template_directory() . '/languages' );
 } );

@@ -13,7 +13,7 @@ $templates = [ 'templates/search.twig', 'templates/archive.twig', 'templates/ind
 
 $context = Timber::context(
 	[
-		'title' => __( 'Search results for', 'starter-theme' ) . ' ' . esc_html( get_search_query() ),
+		'title' => __( 'Search results for', 'wp-twalp' ) . ' ' . esc_html( get_search_query() ),
 	]
 );
 
