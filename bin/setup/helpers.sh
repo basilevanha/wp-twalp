@@ -76,42 +76,96 @@ ask_sub_yn() {
   esac
 }
 
-# Menu choice (consistent format)
+# Interactive arrow-key menu choice
+# Usage: choose VAR_NAME DEFAULT_INDEX "Option 1" "Option 2" ...
+# Returns the 1-based index of the selected option
 choose() {
-  local var_name="$1"
-  local default="$2"
-  shift 2
-  local i=1
-  for option in "$@"; do
-    if [ "$i" -eq "$default" ]; then
-      echo -e "    ${BOLD}${i})${NC} ${option} ${DIM}(default)${NC}"
-    else
-      echo -e "    ${i}) ${option}"
-    fi
-    i=$((i + 1))
-  done
-  echo ""
-  read -rp "$(echo -e "  ${BOLD}Choose${NC} ${DIM}[$default]${NC}: ")" value
-  printf -v "$var_name" '%s' "${value:-$default}"
+  _choose_internal "    " "$@"
 }
 
 # Sub-menu choice (6-space indent, for nested menus)
 choose_sub() {
-  local var_name="$1"
-  local default="$2"
-  shift 2
-  local i=1
-  for option in "$@"; do
-    if [ "$i" -eq "$default" ]; then
-      echo -e "      ${BOLD}${i})${NC} ${option} ${DIM}(default)${NC}"
+  _choose_internal "      " "$@"
+}
+
+# Internal: interactive selector with arrow keys
+# Args: indent var_name default_index option1 option2 ...
+_choose_internal() {
+  local indent="$1"
+  local var_name="$2"
+  local selected=$(($3 - 1))  # convert to 0-based
+  shift 3
+  local options=("$@")
+  local count=${#options[@]}
+  local key
+
+  # Hide cursor
+  tput civis 2>/dev/null
+
+  # Ensure cursor is restored on exit/interrupt
+  trap 'tput cnorm 2>/dev/null; trap - RETURN' RETURN
+
+  # Draw initial menu
+  local i
+  for ((i = 0; i < count; i++)); do
+    if [ "$i" -eq "$selected" ]; then
+      echo -e "${indent}${CYAN}→${NC} ${BOLD}${options[$i]}${NC}"
     else
-      echo -e "      ${i}) ${option}"
+      echo -e "${indent}  ${DIM}${options[$i]}${NC}"
     fi
-    i=$((i + 1))
   done
-  echo ""
-  read -rp "$(echo -e "    ${BOLD}Choose${NC} ${DIM}[$default]${NC}: ")" value
-  printf -v "$var_name" '%s' "${value:-$default}"
+
+  # Read keys and update
+  while true; do
+    # Read a single character (raw mode)
+    IFS= read -rsn1 key
+
+    # Enter key — confirm selection
+    if [ "$key" = "" ]; then
+      break
+    fi
+
+    # Escape sequence (arrow keys)
+    if [ "$key" = $'\x1b' ]; then
+      IFS= read -rsn1 key
+      if [ "$key" = "[" ]; then
+        IFS= read -rsn1 key
+        case "$key" in
+          A) # Up arrow
+            ((selected > 0)) && ((selected--))
+            ;;
+          B) # Down arrow
+            ((selected < count - 1)) && ((selected++))
+            ;;
+        esac
+      fi
+    # j/k vim-style navigation
+    elif [ "$key" = "j" ]; then
+      ((selected < count - 1)) && ((selected++))
+    elif [ "$key" = "k" ]; then
+      ((selected > 0)) && ((selected--))
+    fi
+
+    # Move cursor up to redraw
+    printf "\033[%dA" "$count"
+
+    # Redraw menu
+    for ((i = 0; i < count; i++)); do
+      # Clear line and redraw
+      printf "\r\033[K"
+      if [ "$i" -eq "$selected" ]; then
+        echo -e "${indent}${CYAN}→${NC} ${BOLD}${options[$i]}${NC}"
+      else
+        echo -e "${indent}  ${DIM}${options[$i]}${NC}"
+      fi
+    done
+  done
+
+  # Show cursor
+  tput cnorm 2>/dev/null
+
+  # Return 1-based index
+  printf -v "$var_name" '%s' "$((selected + 1))"
 }
 
 # Portable sed -i (macOS vs GNU)

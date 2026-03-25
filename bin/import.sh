@@ -8,37 +8,12 @@
 
 set -euo pipefail
 
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-info()    { echo -e "${CYAN}ℹ${NC}  $1"; }
-success() { echo -e "${GREEN}✔${NC}  $1"; }
-warn()    { echo -e "${YELLOW}⚠${NC}  $1"; }
-error()   { echo -e "${RED}✖${NC}  $1"; }
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+source "$SCRIPT_DIR/setup/helpers.sh"
 ENV_FILE="$ROOT_DIR/.env"
 
-detect_pm() {
-  local ua="${npm_config_user_agent:-}"
-  if [ -n "$ua" ]; then
-    case "$ua" in
-      pnpm*) echo "pnpm"; return ;;
-      yarn*) echo "yarn"; return ;;
-      bun*)  echo "bun";  return ;;
-    esac
-  fi
-  if [ -f "$ROOT_DIR/pnpm-lock.yaml" ]; then echo "pnpm"
-  elif [ -f "$ROOT_DIR/yarn.lock" ]; then echo "yarn"
-  elif [ -f "$ROOT_DIR/bun.lockb" ] || [ -f "$ROOT_DIR/bun.lock" ]; then echo "bun"
-  else echo "npm"
-  fi
-}
 PM=$(detect_pm)
 
 # Check .env exists
@@ -76,26 +51,18 @@ if [ -z "$SQL_FILE" ]; then
   echo ""
   info "Available database dumps:"
   echo ""
-  i=1
+
+  # Build option labels with file size
+  DUMP_LABELS=()
   for f in "${DUMP_FILES[@]}"; do
     fname=$(basename "$f")
     fsize=$(du -h "$f" | cut -f1 | tr -d ' ')
-    if [ "$i" -eq 1 ]; then
-      echo -e "  ${CYAN}→${NC} ${BOLD}${i})${NC} ${fname} (${fsize})"
-    else
-      echo -e "    ${i}) ${fname} (${fsize})"
-    fi
-    i=$((i + 1))
+    DUMP_LABELS+=("${fname} (${fsize})")
   done
-  echo ""
-  read -rp "$(echo -e "${BOLD}Choose${NC} [1]: ")" CHOICE
-  CHOICE="${CHOICE:-1}"
+
+  choose CHOICE 1 "${DUMP_LABELS[@]}"
 
   idx=$((CHOICE - 1))
-  if [ "$idx" -lt 0 ] || [ "$idx" -ge "${#DUMP_FILES[@]}" ]; then
-    error "Invalid choice"
-    exit 1
-  fi
   SQL_FILE="${DUMP_FILES[$idx]}"
 fi
 

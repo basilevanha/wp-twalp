@@ -72,19 +72,20 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
     echo ""
     info "Database dumps found:"
     echo ""
-    dump_i=1
+
+    # Build option labels with file size
+    DUMP_LABELS=()
     for f in "${DUMP_FILES[@]}"; do
       fname=$(basename "$f")
       fsize=$(du -h "$f" | cut -f1 | tr -d ' ')
-      echo -e "    ${BOLD}${dump_i})${NC} ${fname} ${DIM}(${fsize})${NC}"
-      dump_i=$((dump_i + 1))
+      DUMP_LABELS+=("${fname} (${fsize})")
     done
-    echo -e "    ${BOLD}${dump_i})${NC} Fresh install ${DIM}(empty database)${NC}"
-    echo ""
-    read -rp "$(echo -e "  ${BOLD}Choose${NC} ${DIM}[$dump_i]${NC}: ")" DUMP_CHOICE
-    DUMP_CHOICE="${DUMP_CHOICE:-$dump_i}"
+    DUMP_LABELS+=("Fresh install (empty database)")
 
-    if [ "$DUMP_CHOICE" -lt "$dump_i" ] 2>/dev/null; then
+    # Default to last option (fresh install)
+    choose DUMP_CHOICE ${#DUMP_LABELS[@]} "${DUMP_LABELS[@]}"
+
+    if [ "$DUMP_CHOICE" -lt "${#DUMP_LABELS[@]}" ] 2>/dev/null; then
       idx=$((DUMP_CHOICE - 1))
       if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#DUMP_FILES[@]}" ]; then
         IMPORT_DUMP="${DUMP_FILES[$idx]}"

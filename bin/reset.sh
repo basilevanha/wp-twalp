@@ -6,35 +6,12 @@
 
 set -euo pipefail
 
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-success() { echo -e "${GREEN}✔${NC}  $1"; }
-warn()    { echo -e "${YELLOW}⚠${NC}  $1"; }
-info()    { echo -e "${CYAN}ℹ${NC}  $1"; }
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+source "$SCRIPT_DIR/setup/helpers.sh"
 ENV_FILE="$ROOT_DIR/.env"
 
-detect_pm() {
-  local ua="${npm_config_user_agent:-}"
-  if [ -n "$ua" ]; then
-    case "$ua" in
-      pnpm*) echo "pnpm"; return ;;
-      yarn*) echo "yarn"; return ;;
-      bun*)  echo "bun";  return ;;
-    esac
-  fi
-  if [ -f "$ROOT_DIR/pnpm-lock.yaml" ]; then echo "pnpm"
-  elif [ -f "$ROOT_DIR/yarn.lock" ]; then echo "yarn"
-  elif [ -f "$ROOT_DIR/bun.lockb" ] || [ -f "$ROOT_DIR/bun.lock" ]; then echo "bun"
-  else echo "npm"
-  fi
-}
 PM=$(detect_pm)
 DOCKER_COMPOSE="docker compose -f $ROOT_DIR/docker/docker-compose.yml"
 
@@ -46,12 +23,10 @@ echo -e "    • .env (configuration)"
 echo -e "    • node_modules/, vendor/, package-lock.json, composer.lock"
 echo -e "    • .setup-state"
 echo ""
-echo -e "  ${BOLD}1)${NC} Reset now"
-echo -e "  ${BOLD}2)${NC} Dump database first, then reset"
-echo -e "  ${BOLD}3)${NC} Cancel"
-echo ""
-read -rp "$(echo -e "${BOLD}Choose${NC} [3]: ")" CHOICE
-CHOICE="${CHOICE:-3}"
+choose CHOICE 3 \
+  "Reset now" \
+  "Dump database first, then reset" \
+  "Cancel"
 
 DO_RESET="n"
 
