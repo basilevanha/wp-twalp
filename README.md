@@ -71,7 +71,18 @@ wp-boilerplate/
 ### Setup
 
 ```bash
-git clone https://github.com/basilevanha/wp-twalp.git my-project
+# Via GitHub (recommended — creates your own repo from the template)
+# Click "Use this template" on https://github.com/basilevanha/wp-twalp
+# then clone your new repo:
+git clone https://github.com/you/my-project.git
+cd my-project
+npm run setup
+```
+
+Or via CLI:
+
+```bash
+gh repo create my-project --template basilevanha/wp-twalp --clone
 cd my-project
 npm run setup
 ```
