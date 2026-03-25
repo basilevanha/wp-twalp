@@ -150,9 +150,18 @@ function sync() {
     setupAcfJsonSymlink();
     writeHotFile();
   } else {
-    // In production, copy acf-json as real files
+    // In production, copy acf-json as real files (remove any existing symlink first)
     if (existsSync(resolve(ROOT, 'src/acf-json'))) {
-      copyDir(resolve(ROOT, 'src/acf-json'), resolve(THEME_DIR, 'acf-json'));
+      const acfDest = resolve(THEME_DIR, 'acf-json');
+      try {
+        const stat = lstatSync(acfDest);
+        if (stat.isSymbolicLink()) {
+          unlinkSync(acfDest);
+        }
+      } catch {
+        // Doesn't exist yet, fine
+      }
+      copyDir(resolve(ROOT, 'src/acf-json'), acfDest);
     }
     // Copy vendor/ into theme for deployment
     if (existsSync(resolve(ROOT, 'vendor'))) {
