@@ -12,7 +12,7 @@
  *   node bin/sync.js --production # Sync + copy vendor/ for deployment
  */
 
-import { cpSync, mkdirSync, writeFileSync, existsSync, symlinkSync, lstatSync, readlinkSync, rmSync, unlinkSync } from 'fs';
+import { cpSync, mkdirSync, writeFileSync, existsSync, lstatSync, unlinkSync } from 'fs';
 import { resolve, dirname, relative, join } from 'path';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -60,39 +60,30 @@ function writeAutoloadPath() {
 }
 
 /**
- * Create or verify the acf-json symlink.
+ * Prepare src/acf-json/ so Docker can bind-mount it into the theme.
+ *
+ * Docker bind-mounts `src/acf-json/` over `theme/acf-json/` inside the
+ * container — the source directory must exist on the host before the
+ * container starts, otherwise Docker creates it as root. Also removes
+ * any legacy symlink or stray directory at the theme destination left
+ * over from previous sync versions, so the bind mount has a clean
+ * target on the next container start.
  */
-function setupAcfJsonSymlink() {
-  const target = resolve(ROOT, 'src/acf-json');
-  const link = resolve(THEME_DIR, 'acf-json');
+function prepareAcfJsonDir() {
+  const src = resolve(ROOT, 'src/acf-json');
+  const dest = resolve(THEME_DIR, 'acf-json');
 
-  ensureDir(target);
+  ensureDir(src);
 
-  // Check if symlink already exists and points to the right place
   try {
-    const stat = lstatSync(link);
+    const stat = lstatSync(dest);
     if (stat.isSymbolicLink()) {
-      if (readlinkSync(link) === target) {
-        console.log('[sync] acf-json symlink OK');
-        return;
-      }
-      // Symlink exists but points elsewhere — remove it
-      unlinkSync(link);
-    } else {
-      // It's a real directory (e.g. from copying the project) — backup then remove
-      try {
-        cpSync(link, target, { recursive: true });
-      } catch {
-        // Nothing to backup
-      }
-      rmSync(link, { recursive: true, force: true });
+      unlinkSync(dest);
+      console.log('[sync] Removed legacy acf-json symlink');
     }
   } catch {
-    // Link doesn't exist, create it
+    // Doesn't exist, fine — Docker will create the mount point
   }
-
-  symlinkSync(target, link, 'dir');
-  console.log('[sync] Created acf-json symlink');
 }
 
 /**
@@ -145,12 +136,12 @@ function sync() {
     writeAutoloadPath();
   }
 
-  // Setup ACF JSON symlink (dev only — in prod, files are copied)
+  // In dev, Docker bind-mounts src/acf-json → theme/acf-json.
+  // In prod, no container runs — copy files into the theme instead.
   if (!isProduction) {
-    setupAcfJsonSymlink();
+    prepareAcfJsonDir();
     writeHotFile();
   } else {
-    // In production, copy acf-json as real files (remove any existing symlink first)
     if (existsSync(resolve(ROOT, 'src/acf-json'))) {
       const acfDest = resolve(THEME_DIR, 'acf-json');
       try {

@@ -6,6 +6,7 @@ services:
     volumes:
       - ../public:/var/www/html
       - ../vendor:/var/www/vendor
+      - ../src/acf-json:/var/www/html/wp-content/themes/${PROJECT_NAME:-wp-twalp}/acf-json
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}

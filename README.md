@@ -201,7 +201,7 @@ Perfect for menus, modals, tabs, accordions — anything that would normally req
 | `src/views/`     | `→ themes/{name}/views/`             |
 | `src/fonts/`     | `→ themes/{name}/assets/fonts/`      |
 | `src/images/`    | `→ themes/{name}/assets/images/`     |
-| `src/acf-json/`  | `→ themes/{name}/acf-json` (symlink) |
+| `src/acf-json/`  | `→ themes/{name}/acf-json` (Docker bind mount) |
 
 In dev mode, changes are watched and synced automatically.
 
@@ -214,7 +214,7 @@ The PHP bridge (`inc/vite.php`) detects the environment:
 
 ### ACF JSON sync
 
-ACF field groups are stored in `src/acf-json/` (versioned in git). A symlink connects the theme to this directory, so changes made in wp-admin are written directly to your repo.
+ACF field groups are stored in `src/acf-json/` (versioned in git). Docker bind-mounts this directory into the theme's `acf-json/`, so changes made in wp-admin are written directly to your repo.
 
 To remove ACF support, answer "no" during setup — the CLI removes all related files.
 
