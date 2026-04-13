@@ -190,10 +190,31 @@ detect_pm() {
   fi
 }
 
-# Find a free port starting from the given one
+# Check if a port is used by a Docker container owned by the given compose project
+port_used_by_project() {
+  local port=$1
+  local project=$2
+  [ -z "$project" ] && return 1
+  docker ps --filter "label=com.docker.compose.project=$project" --format '{{.Ports}}' 2>/dev/null \
+    | grep -qE "(^|[^0-9])0\.0\.0\.0:${port}->|(^|[^0-9]):::${port}->"
+}
+
+# Check if a port is free (not bound by anything on the host)
+port_is_free() {
+  local port=$1
+  ! lsof -iTCP:"$port" -sTCP:LISTEN &>/dev/null
+}
+
+# Find a free port starting from the given one.
+# If PROJECT_NAME is set and the port is used by that project's containers,
+# reuse it (the running container is ours — we'll restart it with the same port).
 find_free_port() {
   local port=$1
-  while lsof -i :"$port" &>/dev/null; do
+  local project="${2:-${PROJECT_NAME:-}}"
+  while ! port_is_free "$port"; do
+    if port_used_by_project "$port" "$project"; then
+      break
+    fi
     port=$((port + 1))
   done
   echo "$port"

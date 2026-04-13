@@ -45,9 +45,28 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
     esac
   fi
 
-  # Find available ports (silent unless non-default)
-  WP_PORT=$(find_free_port 8080)
-  PMA_PORT=$(find_free_port $((WP_PORT + 1)))
+  # Reuse ports from existing .env if present (setup re-run on same project)
+  EXISTING_WP_PORT=""
+  EXISTING_PMA_PORT=""
+  if [ -f "$ENV_FILE" ]; then
+    EXISTING_WP_PORT=$(grep -E '^WP_PORT=' "$ENV_FILE" | tail -1 | cut -d= -f2-)
+    EXISTING_PMA_PORT=$(grep -E '^PMA_PORT=' "$ENV_FILE" | tail -1 | cut -d= -f2-)
+  fi
+
+  # WP_PORT: prefer existing if free OR held by our own project containers
+  if [ -n "$EXISTING_WP_PORT" ] && { port_is_free "$EXISTING_WP_PORT" || port_used_by_project "$EXISTING_WP_PORT" "$PROJECT_NAME"; }; then
+    WP_PORT="$EXISTING_WP_PORT"
+  else
+    WP_PORT=$(find_free_port 8080 "$PROJECT_NAME")
+  fi
+
+  # PMA_PORT: same logic, search from existing or WP_PORT+1
+  if [ -n "$EXISTING_PMA_PORT" ] && [ "$EXISTING_PMA_PORT" != "$WP_PORT" ] && { port_is_free "$EXISTING_PMA_PORT" || port_used_by_project "$EXISTING_PMA_PORT" "$PROJECT_NAME"; }; then
+    PMA_PORT="$EXISTING_PMA_PORT"
+  else
+    PMA_PORT=$(find_free_port $((WP_PORT + 1)) "$PROJECT_NAME")
+  fi
+
   WP_HOME="http://localhost:$WP_PORT"
 
   [ "$WP_PORT" != "8080" ] && warn "Port 8080 busy → using ${BOLD}${WP_PORT}${NC}"
