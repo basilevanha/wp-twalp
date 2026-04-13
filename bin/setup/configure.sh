@@ -62,9 +62,9 @@ if [ "$PROJECT_NAME" != "wp-twalp" ]; then
   find "$ROOT_DIR/src/theme" -name "*.php" -exec \
     sed -i "s|'wp-twalp'|'$PROJECT_NAME'|g" {} +
 
-  find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
+  find "$ROOT_DIR/src/views" -name "*.twig" -exec \
     sed -i '' "s|'wp-twalp'|'$PROJECT_NAME'|g" {} + 2>/dev/null || \
-  find "$ROOT_DIR/src/templates" -name "*.twig" -exec \
+  find "$ROOT_DIR/src/views" -name "*.twig" -exec \
     sed -i "s|'wp-twalp'|'$PROJECT_NAME'|g" {} +
 
   success "Text domain updated to '$PROJECT_NAME'"

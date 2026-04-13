@@ -45,7 +45,7 @@ wp-boilerplate/
 ├── src/                   # ← Your workspace
 │   ├── js/main.js        # JS entry point (imports CSS + Alpine)
 │   ├── css/main.css      # Tailwind entry point
-│   ├── templates/        # Twig templates (layouts, pages, partials)
+│   ├── views/            # Twig templates (layouts, pages, partials)
 │   ├── theme/            # PHP (functions.php, inc/, StarterSite.php)
 │   ├── acf-json/         # ACF field groups (git-versioned)
 │   ├── fonts/            # Web fonts
@@ -198,7 +198,7 @@ Perfect for menus, modals, tabs, accordions — anything that would normally req
 | Source           | Destination                          |
 | ---------------- | ------------------------------------ |
 | `src/theme/`     | `→ public/wp-content/themes/{name}/` |
-| `src/templates/` | `→ themes/{name}/templates/`         |
+| `src/views/`     | `→ themes/{name}/views/`             |
 | `src/fonts/`     | `→ themes/{name}/assets/fonts/`      |
 | `src/images/`    | `→ themes/{name}/assets/images/`     |
 | `src/acf-json/`  | `→ themes/{name}/acf-json` (symlink) |
@@ -272,7 +272,7 @@ npm run setup    # Start fresh (will offer to restore from dump)
 Twig templates follow the Timber structure:
 
 ```
-src/templates/
+src/views/
 ├── layouts/
 │   └── base.twig              # HTML skeleton (head, body, footer)
 ├── templates/

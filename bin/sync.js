@@ -129,8 +129,8 @@ function sync() {
   console.log('[sync] Copied src/theme/ → theme');
 
   // Copy Twig templates
-  copyDir(resolve(ROOT, 'src/templates'), resolve(THEME_DIR, 'templates'));
-  console.log('[sync] Copied src/templates/ → theme/templates/');
+  copyDir(resolve(ROOT, 'src/views'), resolve(THEME_DIR, 'views'));
+  console.log('[sync] Copied src/views/ → theme/views/');
 
   // Copy static assets
   if (existsSync(resolve(ROOT, 'src/fonts'))) {
@@ -182,7 +182,7 @@ async function watch() {
 
   const watcher = chokidarWatch([
     resolve(ROOT, 'src/theme'),
-    resolve(ROOT, 'src/templates'),
+    resolve(ROOT, 'src/views'),
     resolve(ROOT, 'src/fonts'),
     resolve(ROOT, 'src/images'),
   ], {
@@ -198,8 +198,8 @@ async function watch() {
       const dest = resolve(THEME_DIR, relative(resolve(ROOT, 'src/theme'), filePath));
       ensureDir(dirname(dest));
       try { cpSync(filePath, dest, { force: true }); } catch (err) { console.error(`[sync] Failed to copy ${rel}:`, err.message); }
-    } else if (filePath.startsWith(resolve(ROOT, 'src/templates'))) {
-      const dest = resolve(THEME_DIR, 'templates', relative(resolve(ROOT, 'src/templates'), filePath));
+    } else if (filePath.startsWith(resolve(ROOT, 'src/views'))) {
+      const dest = resolve(THEME_DIR, 'views', relative(resolve(ROOT, 'src/views'), filePath));
       ensureDir(dirname(dest));
       try { cpSync(filePath, dest, { force: true }); } catch (err) { console.error(`[sync] Failed to copy ${rel}:`, err.message); }
     } else if (filePath.startsWith(resolve(ROOT, 'src/fonts'))) {

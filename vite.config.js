@@ -18,7 +18,7 @@ export default defineConfig({
     // Watch PHP and Twig files in the theme directory for live reload
     liveReload([
       `${resolvedThemeDir}/**/*.php`,
-      `${resolvedThemeDir}/templates/**/*.twig`,
+      `${resolvedThemeDir}/views/**/*.twig`,
     ]),
   ],
 

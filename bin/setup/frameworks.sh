@@ -3,5 +3,5 @@
 
 if [ "${WP_HOMEPAGE:-1}" != "1" ]; then
   rm -f "$ROOT_DIR/src/theme/front-page.php"
-  rm -f "$ROOT_DIR/src/templates/templates/front-page.twig"
+  rm -f "$ROOT_DIR/src/views/templates/front-page.twig"
 fi
