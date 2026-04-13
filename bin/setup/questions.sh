@@ -3,16 +3,19 @@
 
 if [ "$SKIP_QUESTIONS" != "y" ]; then
 
+  SETUP_CURRENT_CHAPTER=1
+  SETUP_TOTAL_CHAPTERS=3
+
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 1. Project
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  header "1/3 — Project"
+  chapter "📦" "Project" "Name your site and set up the local database."
 
-  ask "Site name" "Wp twalp" SITE_TITLE
+  ask "Site name"    "Wp twalp" SITE_TITLE 12
 
   # Derive slug from site name
   DEFAULT_SLUG=$(echo "$SITE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
-  ask "Project slug" "$DEFAULT_SLUG" PROJECT_NAME
+  ask "Project slug" "$DEFAULT_SLUG" PROJECT_NAME 12
   PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' _' '-' | sed 's/[^a-z0-9-]//g')
 
   THEME_DIR="./public/wp-content/themes/$PROJECT_NAME"
@@ -75,8 +78,8 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # DB credentials
   DB_PASSWORD_DEFAULT=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 16 2>/dev/null) || true
   [ -z "$DB_PASSWORD_DEFAULT" ] && DB_PASSWORD_DEFAULT="wp_$(date +%s)"
-  ask "DB user" "$DB_NAME" DB_USER
-  ask "DB password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD
+  ask "DB user"     "$DB_NAME"            DB_USER     12
+  ask "DB password" "$DB_PASSWORD_DEFAULT" DB_PASSWORD 12
 
   # Check for existing dumps
   IMPORT_DUMP=""
@@ -116,7 +119,7 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 2. WordPress
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  header "2/3 — WordPress"
+  chapter "🚀" "WordPress" "Install WordPress, configure the admin user and homepage."
 
   choose WP_SETUP_MODE 1 \
     "Automatic setup via CLI (recommended)" \
@@ -132,20 +135,32 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
 
   if [ "$WP_SETUP_MODE" = "1" ]; then
     echo ""
-    ask_sub "Admin username" "admin" WP_ADMIN_USER
-    ask_sub "Admin password" "admin" WP_ADMIN_PASSWORD
-    ask_sub "Admin email" "admin@example.com" WP_ADMIN_EMAIL
-    ask_sub "Language" "fr_FR" WP_LOCALE
-    ask_sub_yn "Clean defaults?" "y" WP_CLEAN_DEFAULTS
+    ask_sub "Admin username" "admin"             WP_ADMIN_USER     14
+    ask_sub "Admin password" "admin"             WP_ADMIN_PASSWORD 14
+    ask_sub "Admin email"    "admin@example.com" WP_ADMIN_EMAIL    14
 
     echo ""
-    echo -e "    ${BOLD}Homepage:${NC}"
+    echo -e "       ${BOLD}Language${NC}"
+    choose_sub _locale_idx 1 "${LOCALES_LABELS[@]}"
+    if [ "$_locale_idx" = "${#LOCALES_LABELS[@]}" ]; then
+      ask_sub "Locale code" "fr_FR" WP_LOCALE 14
+    else
+      WP_LOCALE="${LOCALES_CODES[$((_locale_idx - 1))]}"
+    fi
+    unset _locale_idx
+
+    echo ""
+    choose_sub_yn "Clean defaults?" "y" WP_CLEAN_DEFAULTS \
+      "removes Hello Dolly, Akismet, Twenty* themes and sample content"
+
+    echo ""
+    echo -e "       ${BOLD}Homepage${NC}"
     choose_sub WP_HOMEPAGE 1 \
       "Static page (recommended)" \
       "Latest posts"
 
     if [ "$WP_HOMEPAGE" = "1" ]; then
-      ask_sub "Page title" "Home" WP_HOMEPAGE_TITLE
+      ask_sub "Page title" "Home" WP_HOMEPAGE_TITLE 14
     fi
   else
     info "Configure WordPress manually at ${BOLD}http://localhost:$WP_PORT${NC}"
@@ -154,9 +169,10 @@ if [ "$SKIP_QUESTIONS" != "y" ]; then
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 3. Plugins
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  header "3/3 — Plugins"
+  chapter "🧩" "Plugins" "Pick the WordPress plugins your theme should ship with."
 
-  ask_yn "ACF (Advanced Custom Fields)?" "y" USE_ACF
+  choose_yn "ACF (Advanced Custom Fields)" "y" USE_ACF \
+    "custom fields with JSON sync for git versioning"
   if [ "$USE_ACF" = "n" ]; then
     info "ACF will be removed from the theme."
   fi

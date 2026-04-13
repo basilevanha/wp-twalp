@@ -10,38 +10,25 @@ RUNNING_PORT=$(docker ps \
   | grep -oE '(0\.0\.0\.0|:::)?:[0-9]+->80/tcp' \
   | grep -oE ':[0-9]+->' \
   | tr -d ':->' \
-  | head -1)
+  | head -1 || true)
 
 if [ -n "$RUNNING_PORT" ] && [ "$RUNNING_PORT" != "$WP_PORT" ]; then
-  info "WordPress container is running on port $RUNNING_PORT but .env wants $WP_PORT — recreating..."
-  (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" down)
-  (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" up -d --force-recreate)
-  success "Docker containers recreated on port $WP_PORT"
+  info "WordPress container is on port $RUNNING_PORT but .env wants $WP_PORT — recreating"
+  run_with_spinner_sh "Stopping old containers" \
+    "cd '$ROOT_DIR/docker' && docker compose --env-file '$ENV_FILE' down"
+  run_with_spinner_sh "Recreating Docker containers on port $WP_PORT" \
+    "cd '$ROOT_DIR/docker' && docker compose --env-file '$ENV_FILE' up -d --force-recreate"
 elif docker compose -f "$ROOT_DIR/docker/docker-compose.yml" --env-file "$ENV_FILE" ps --status running 2>/dev/null | grep -q "wordpress"; then
   success "Docker containers already running"
 else
-  info "Starting Docker containers..."
-  (cd "$ROOT_DIR/docker" && docker compose --env-file "$ENV_FILE" up -d)
-  success "Docker containers started"
+  run_with_spinner_sh "Starting Docker containers" \
+    "cd '$ROOT_DIR/docker' && docker compose --env-file '$ENV_FILE' up -d"
 fi
 
 # ── Wait for WordPress ──
-info "Waiting for WordPress to be ready..."
-MAX_WAIT=60
-ELAPSED=0
-while ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WP_PORT" | grep -q "200\|302"; do
-  sleep 2
-  ELAPSED=$((ELAPSED + 2))
-  if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-    warn "WordPress not responding yet. It may still be starting up."
-    break
-  fi
-done
-if [ "$ELAPSED" -lt "$MAX_WAIT" ]; then
-  success "WordPress is running"
-fi
+wait_with_spinner "Waiting for WordPress to be ready" 60 \
+  "curl -s -o /dev/null -w '%{http_code}' 'http://localhost:$WP_PORT' | grep -q '200\\|302'"
 
 # ── Initial sync ──
-info "Running initial file sync..."
-(cd "$ROOT_DIR" && node bin/sync.js)
-success "Files synced to theme directory"
+run_with_spinner_sh "Running initial file sync" \
+  "cd '$ROOT_DIR' && node bin/sync.js"

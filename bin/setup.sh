@@ -65,7 +65,7 @@ if [ -f "$STATE_FILE" ]; then
   echo -e "      WP setup:  ${BOLD}$([ "${WP_SETUP_MODE:-1}" = "1" ] && echo "Automatic ($WP_ADMIN_USER)" || echo "Vanilla")${NC}"
   echo -e "      ACF:       ${BOLD}$USE_ACF${NC}"
   echo ""
-  ask_yn "Resume with these answers?" "y" RESUME
+  choose_yn "Resume with these answers?" "y" RESUME
   if [ "$RESUME" = "y" ]; then
     SKIP_QUESTIONS="y"
     success "Resuming with saved answers"
@@ -108,24 +108,26 @@ rm -f "$STATE_FILE"
 # ──────────────────────────────────────────────
 # Done!
 # ──────────────────────────────────────────────
+RULE="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo -e "  ${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "  ${BOLD}║            Setup complete!               ║${NC}"
-echo -e "  ${BOLD}╚══════════════════════════════════════════╝${NC}"
+echo -e "  ${DIM}${RULE}${NC}"
+echo -e "   ✨  ${BOLD}Setup complete${NC}"
+echo -e "  ${DIM}${RULE}${NC}"
 echo ""
-echo -e "    ${BOLD}Theme:${NC}       $PROJECT_NAME"
-echo -e "    ${BOLD}Theme dir:${NC}   $THEME_DIR"
-echo -e "    ${BOLD}WordPress:${NC}   http://localhost:$WP_PORT"
+printf "     ${BOLD}%-12s${NC}  %s\n" "Theme"      "$PROJECT_NAME"
+printf "     ${BOLD}%-12s${NC}  %s\n" "Theme dir"  "$THEME_DIR"
+printf "     ${BOLD}%-12s${NC}  %s\n" "WordPress"  "http://localhost:$WP_PORT"
 if [ "${WP_SETUP_MODE:-1}" = "1" ]; then
-echo -e "    ${BOLD}Admin:${NC}       http://localhost:$WP_PORT/wp-admin  ${DIM}(${WP_ADMIN_USER} / ${WP_ADMIN_PASSWORD})${NC}"
+  printf "     ${BOLD}%-12s${NC}  %s  ${DIM}(%s / %s)${NC}\n" \
+    "Admin" "http://localhost:$WP_PORT/wp-admin" "$WP_ADMIN_USER" "$WP_ADMIN_PASSWORD"
 fi
-echo -e "    ${BOLD}phpMyAdmin:${NC}  http://localhost:$PMA_PORT"
+printf "     ${BOLD}%-12s${NC}  %s\n" "phpMyAdmin" "http://localhost:$PMA_PORT"
 echo ""
-echo -e "    ${BOLD}Commands:${NC}"
-echo -e "      ${CYAN}$PM run dev${NC}    Start development"
-echo -e "      ${CYAN}$PM run build${NC}  Production build"
-echo -e "      ${CYAN}$PM run stop${NC}   Stop Docker"
-echo -e "      ${CYAN}$PM run reset${NC}  Full reset"
+echo -e "     ${BOLD}Commands${NC}"
+printf "       ${CYAN}%-14s${NC}  %s\n" "$PM run dev"   "Start development"
+printf "       ${CYAN}%-14s${NC}  %s\n" "$PM run build" "Production build"
+printf "       ${CYAN}%-14s${NC}  %s\n" "$PM run stop"  "Stop Docker"
+printf "       ${CYAN}%-14s${NC}  %s\n" "$PM run reset" "Full reset"
 echo ""
 
 # ── Launch dev server ──

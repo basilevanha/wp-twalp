@@ -2,13 +2,11 @@
 # setup/configure.sh — Generate .env, update theme metadata, remove ACF, install dependencies
 
 echo ""
-echo -e "  ${DIM}──────────────────────────────────────────${NC}"
-echo ""
 
 # ── Write .env ──
 WRITE_ENV="y"
 if [ -f "$ENV_FILE" ]; then
-  ask_yn ".env already exists. Overwrite?" "y" WRITE_ENV
+  choose_yn ".env already exists. Overwrite?" "y" WRITE_ENV
 fi
 
 WP_PORT="${WP_PORT:-8080}"
@@ -93,17 +91,15 @@ fi
 
 # ── Install dependencies ──
 if command -v composer &>/dev/null; then
-  info "Installing Composer dependencies (Timber)..."
-  (cd "$ROOT_DIR" && composer install --no-interaction --quiet)
-  success "Composer dependencies installed"
+  run_with_spinner_sh "Installing Composer dependencies (Timber)" \
+    "cd '$ROOT_DIR' && composer install --no-interaction --quiet"
 else
   warn "Composer not found. Run manually: composer install"
 fi
 
 if command -v "$PM" &>/dev/null; then
-  info "Installing dependencies via ${BOLD}$PM${NC}..."
-  (cd "$ROOT_DIR" && "$PM" install --silent 2>/dev/null) || (cd "$ROOT_DIR" && "$PM" install 2>/dev/null)
-  success "Dependencies installed ($PM)"
+  run_with_spinner_sh "Installing dependencies via $PM" \
+    "cd '$ROOT_DIR' && '$PM' install --silent"
 else
   warn "$PM not found. Run manually: $PM install"
 fi

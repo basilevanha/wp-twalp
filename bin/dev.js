@@ -100,36 +100,36 @@ async function ensureDocker() {
     if (!isDockerProject()) return;
 
     if (areContainersRunning()) {
-        console.log(`${GREEN}✔${NC}  Docker containers already running`);
+        console.log(`     ${GREEN}✔${NC}  Docker containers already running`);
         return;
     }
 
-    console.log(`${CYAN}ℹ${NC}  Starting Docker containers...`);
+    console.log(`     ${CYAN}ℹ${NC}  Starting Docker containers...`);
     try {
         execFileSync("docker", [...DOCKER_COMPOSE_ARGS, "up", "-d"], {
             cwd: ROOT,
             stdio: "inherit",
         });
-        console.log(`${GREEN}✔${NC}  Docker containers started`);
+        console.log(`     ${GREEN}✔${NC}  Docker containers started`);
     } catch {
-        console.error(`\n${RED}Error: Failed to start Docker containers. Is Docker running?${NC}\n`);
+        console.error(`\n     ${RED}Error: Failed to start Docker containers. Is Docker running?${NC}\n`);
         process.exit(1);
     }
 
     // Wait for WordPress to be ready (max 30s)
-    console.log(`${DIM}Waiting for WordPress...${NC}`);
+    console.log(`     ${DIM}Waiting for WordPress...${NC}`);
     for (let i = 0; i < 30; i += 2) {
         try {
             execSync(`curl -s -o /dev/null -w "%{http_code}" http://localhost:${WP_PORT} | grep -qE "200|302"`, {
                 stdio: "pipe",
             });
-            console.log(`${GREEN}✔${NC}  WordPress is ready`);
+            console.log(`     ${GREEN}✔${NC}  WordPress is ready`);
             return;
         } catch {
             await new Promise((r) => setTimeout(r, 2000));
         }
     }
-    console.log(`${YELLOW}⚠${NC}  WordPress may still be starting up...`);
+    console.log(`     ${YELLOW}⚠${NC}  WordPress may still be starting up...`);
 }
 
 // ──────────────────────────────────────────────
@@ -298,22 +298,23 @@ function showBanner() {
     const viteUrl = `http://localhost:${vitePort}`;
     const pmaUrl = `http://localhost:${PMA_PORT}`;
 
+    const rule = "━".repeat(54);
     console.log("");
-    console.log(`${BOLD}╔══════════════════════════════════════════╗${NC}`);
-    console.log(`${BOLD}║       Development server ready           ║${NC}`);
-    console.log(`${BOLD}╠══════════════════════════════════════════╣${NC}`);
-    console.log(`${BOLD}║${NC}  ${GREEN}WordPress${NC} :  ${wpUrl.padEnd(27)}${BOLD}║${NC}`);
-    console.log(`${BOLD}║${NC}  ${CYAN}Vite HMR${NC}  :  ${viteUrl.padEnd(27)}${BOLD}║${NC}`);
-    console.log(`${BOLD}║${NC}  ${DIM}phpMyAdmin${NC} :  ${pmaUrl.padEnd(26)}${BOLD}║${NC}`);
-    console.log(`${BOLD}╚══════════════════════════════════════════╝${NC}`);
+    console.log(`  ${DIM}${rule}${NC}`);
+    console.log(`   ⚡  ${BOLD}Development server ready${NC}`);
+    console.log(`  ${DIM}${rule}${NC}`);
     console.log("");
-    console.log(`  Vite gère le HMR (hot reload CSS/JS automatique).`);
+    console.log(`     ${BOLD}WordPress${NC}   ${wpUrl}`);
+    console.log(`     ${BOLD}Vite HMR${NC}    ${viteUrl}`);
+    console.log(`     ${DIM}phpMyAdmin${NC}  ${pmaUrl}`);
+    console.log("");
+    console.log(`     ${DIM}Vite gère le HMR (hot reload CSS/JS automatique).${NC}`);
     if (vitePort !== "5173") {
-        console.log(`  ${YELLOW}Note: port 5173 occupé, Vite utilise le port ${vitePort}.${NC}`);
+        console.log(`     ${YELLOW}Note: port 5173 occupé, Vite utilise le port ${vitePort}.${NC}`);
     }
     console.log("");
-    console.log(`  ${DIM}Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.${NC}`);
-    console.log(`  ${DIM}Pour tout stopper : ${PM.name} run stop${NC}`);
+    console.log(`     ${DIM}Ctrl+C pour arrêter Vite. Docker continue en arrière-plan.${NC}`);
+    console.log(`     ${DIM}Pour tout stopper : ${PM.name} run stop${NC}`);
     console.log("");
 
     // Open WordPress in the default browser
