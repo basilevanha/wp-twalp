@@ -340,6 +340,17 @@ Produces a self-contained theme with:
 
 Deploy the theme directory to any WordPress installation.
 
+### Testing the production build locally
+
+In dev, Vite injects CSS through the JS module graph to enable HMR — which causes a brief flash of unstyled content on first load. This is expected and only happens in dev. To verify the production output behaves correctly:
+
+```bash
+# Stop the dev server first (Ctrl+C) so dist/hot is removed
+npm run build
+```
+
+Then reload the site at `http://localhost:8080`. The PHP bridge detects the absence of `dist/hot` and switches to manifest mode, enqueuing hashed CSS/JS the standard WordPress way — no FOUC. Run `npm run dev` again to return to development.
+
 ---
 
 ## Contributing
